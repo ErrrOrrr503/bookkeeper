@@ -1,10 +1,11 @@
 """
-Модуль содержит описание абстрактного репозитория
+The module contains a description of the abstract repository
+(in fact, interface).
 
-Репозиторий реализует хранение объектов, присваивая каждому объекту уникальный
-идентификатор в атрибуте pk (primary key). Объекты, которые могут быть сохранены
-в репозитории, должны поддерживать добавление атрибута pk и не должны
-использовать его для иных целей.
+The repository implements object storage by assigning each object a unique
+identifier (id) in the primary key (pk) attribute.
+Objects that can be saved in the repository must support adding the pk
+attribute and must not use it for other purposes.
 """
 
 from abc import ABC, abstractmethod
@@ -13,48 +14,110 @@ from typing import Generic, TypeVar, Protocol, Any
 
 class Model(Protocol):  # pylint: disable=too-few-public-methods
     """
-    Модель должна содержать атрибут pk
+    Model must contain pk attribute.
+
+    Attributes
+    ----------
+    pk : int
+        Number to be used as primary key and id.
     """
+
     pk: int
 
 
 T = TypeVar('T', bound=Model)
+""" T is a type template of a type that follows Model protocol. """
 
 
 class AbstractRepository(ABC, Generic[T]):
     """
-    Абстрактный репозиторий.
-    Абстрактные методы:
-    add
-    get
-    get_all
-    update
-    delete
+    Repository abstract class (in fact, interface).
     """
 
     @abstractmethod
     def add(self, obj: T) -> int:
         """
-        Добавить объект в репозиторий, вернуть id объекта,
-        также записать id в атрибут pk.
+        Add an object to the repository.
+        Generates object 'id' which is written into object and returned.
+
+        Parameters
+        ----------
+        obj : T
+            Object to be added. 'id' is written into object.pk attribute.
+
+        Returns
+        -------
+        Generated object's 'id'.
         """
+
+        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def get(self, pk: int) -> T | None:
-        """ Получить объект по id """
+        """
+        Get an object from the repository.
+
+        Parameters
+        ----------
+        pk : int
+            id, by which to retrieve an object
+
+        Returns
+        -------
+        Object of type T or None if no object is found.
+        """
+
+        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
         """
-        Получить все записи по некоторому условию
-        where - условие в виде словаря {'название_поля': значение}
-        если условие не задано (по умолчанию), вернуть все записи
+        Get all objects by some condition.
+
+        Parameters
+        ----------
+        where : dict[str, Any] | None
+            Condition in the form of a dict['name_of_the_field': field_value]
+            or None.
+            If where is None (default), return all objects, stored in repo.
+
+        Returns
+        -------
+        List of objects that match the condition, may be empty.
         """
+
+        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def update(self, obj: T) -> None:
-        """ Обновить данные об объекте. Объект должен содержать поле pk. """
+        """
+        Update the object's properties in the repository.
+
+        Parameters
+        ----------
+        obj : T
+            Object with new properties, but not modified pk.
+
+        Returns
+        -------
+        None
+        """
+
+        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def delete(self, pk: int) -> None:
-        """ Удалить запись """
+        """
+        Delete the object, referred to by pk from the repository.
+
+        Parameters
+        ----------
+        pk : int
+            The primary key of the object to be deleted.
+
+        Returns
+        -------
+        None
+        """
+
+        raise NotImplementedError("Must implement this!")

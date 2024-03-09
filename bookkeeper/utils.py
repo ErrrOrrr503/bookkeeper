@@ -1,15 +1,41 @@
 """
-Вспомогательные функции
+Helper functions.
 """
 
 from typing import Iterable, Iterator
 
 
 def _get_indent(line: str) -> int:
+    """
+    Get the indentation of a line.
+
+    Parameters
+    ----------
+    line : str
+        line, maybe with left (heading) indentation.
+
+    Returns
+    -------
+    Amount of indentation whitespace characters.
+    """
+
     return len(line) - len(line.lstrip())
 
 
 def _lines_with_indent(lines: Iterable[str]) -> Iterator[tuple[int, str]]:
+    """
+    Extract indention information from lines.
+
+    Parameters
+    ----------
+    lines : Iterable[str]
+        Iterable(i.e. file, list) of lines with heading indents.
+
+    Returns
+    -------
+    Generator of pairs indent-line_with_indent.
+    """
+
     for line in lines:
         if not line or line.isspace():
             continue
@@ -18,30 +44,33 @@ def _lines_with_indent(lines: Iterable[str]) -> Iterator[tuple[int, str]]:
 
 def read_tree(lines: Iterable[str]) -> list[tuple[str, str | None]]:
     """
-    Прочитать структуру дерева из текста на основе отступов. Вернуть список
-    пар "потомок-родитель" в порядке топологической сортировки. Родитель
-    элемента верхнего уровня - None.
+    Read tree structure from text, based on indentation.
+    Converts text into a list of pairs(tuples) child-parent
+    in topological order.
+    Top-level parents are None.
+    Empty lines are ignored.
 
-    Пример. Следующий текст:
+    Example:
+    Input:
     parent
         child1
             child2
         child3
 
-    даст такое дерево:
+    Output:
     [('parent', None), ('child1', 'parent'),
      ('child2', 'child1'), ('child3', 'parent')]
 
-    Пустые строки игнорируются.
-
     Parameters
     ----------
-    lines - Итерируемый объект, содержащий строки текста (файл или список строк)
+    lines : Iterable[str]
+        Iterable(i.e. file, list), containing lines in example-like format.
 
     Returns
     -------
-    Список пар "потомок-родитель"
+    List of child-parent pairs(tuples).
     """
+
     parents: list[tuple[str | None, int]] = []
     last_indent = -1
     last_name = None

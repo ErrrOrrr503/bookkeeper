@@ -1,5 +1,5 @@
 """
-Модель категории расходов
+Expense category model
 """
 from collections import defaultdict
 from dataclasses import dataclass
@@ -11,10 +11,20 @@ from ..repository.abstract_repository import AbstractRepository
 @dataclass
 class Category:
     """
-    Категория расходов, хранит название в атрибуте name и ссылку (id) на
-    родителя (категория, подкатегорией которой является данная) в атрибуте parent.
-    У категорий верхнего уровня parent = None
+    Represents expense category.
+
+    Attributes
+    ----------
+    name : str
+        Name of the category.
+    parent : int | None
+        A link to the parent (it's id or pk).
+        Parent is the the category of which this category is a subcategory.
+        For top-level categories, parent = None.
+    pk : int
+        Primary key for storing the category in a repository.
     """
+
     name: str
     parent: int | None = None
     pk: int = 0
@@ -22,17 +32,19 @@ class Category:
     def get_parent(self,
                    repo: AbstractRepository['Category']) -> 'Category | None':
         """
-        Получить родительскую категорию в виде объекта Category
-        Если метод вызван у категории верхнего уровня, возвращает None
+        Get parent category as Category object.
+        If called for top-level category, None is returned.
 
         Parameters
         ----------
-        repo - репозиторий для получения объектов
+        repo : AbstractRepository['Category']
+            Repository from which object will be taken.
 
         Returns
         -------
-        Объект класса Category или None
+        class Category instance or None
         """
+
         if self.parent is None:
             return None
         return repo.get(self.parent)
@@ -41,16 +53,18 @@ class Category:
                         repo: AbstractRepository['Category']
                         ) -> Iterator['Category']:
         """
-        Получить все категории верхнего уровня в иерархии.
+        Get all categories from this to top level one by one (generator).
 
         Parameters
         ----------
-        repo - репозиторий для получения объектов
+        repo : AbstractRepository['Category']
+            Repository from which object will be taken.
 
         Yields
         -------
-        Объекты Category от родителя и выше до категории верхнего уровня
+        class Category instances from patent and up till top level
         """
+
         parent = self.get_parent(repo)
         if parent is None:
             return
@@ -61,24 +75,26 @@ class Category:
                           repo: AbstractRepository['Category']
                           ) -> Iterator['Category']:
         """
-        Получить все подкатегории из иерархии, т.е. непосредственные
-        подкатегории данной, все их подкатегории и т.д.
+        Get all subcategories: all subcategories of this,
+        their subcategories, etc.
 
         Parameters
         ----------
-        repo - репозиторий для получения объектов
+        repo : AbstractRepository['Category']
+            Repository from which object will be taken.
 
         Yields
         -------
-        Объекты Category, являющиеся подкатегориями разного уровня ниже данной.
+        class Category instances, which are subcategories
+        of different level lower than this.
         """
 
         def get_children(graph: dict[int | None, list['Category']],
                          root: int) -> Iterator['Category']:
             """ dfs in graph from root """
-            for x in graph[root]:
-                yield x
-                yield from get_children(graph, x.pk)
+            for subcat in graph[root]:
+                yield subcat
+                yield from get_children(graph, subcat.pk)
 
         subcats = defaultdict(list)
         for cat in repo.get_all():
@@ -91,28 +107,30 @@ class Category:
             tree: list[tuple[str, str | None]],
             repo: AbstractRepository['Category']) -> list['Category']:
         """
-        Создать дерево категорий из списка пар "потомок-родитель".
-        Список должен быть топологически отсортирован, т.е. потомки
-        не должны встречаться раньше своего родителя.
-        Проверка корректности исходных данных не производится.
-        При использовании СУБД с проверкой внешних ключей, будет получена
-        ошибка (для sqlite3 - IntegrityError). При отсутствии проверки
-        со стороны СУБД, результат, возможно, будет корректным, если исходные
-        данные корректны за исключением сортировки. Если нет, то нет.
-        "Мусор на входе, мусор на выходе".
+        Create category tree from a list of "child-parent" pairs (tree).
+        The list must be sorted in the way children don't appear
+        before their parent, there is no correctness checks.
+        When using DBMS with external keys checks - error will be raised
+        (for sqlite3 - IntegrityError).
+        When no checks are performed by DBMS - result might be correct
+        (if only input data is correct, except for sorting).
 
         Parameters
         ----------
-        tree - список пар "потомок-родитель"
-        repo - репозиторий для сохранения объектов
+        tree : list[tuple[str, str | None]]
+            List of "child-parent" pairs.
+        repo : AbstractRepository['Category']
+            Repository in which objects will be saved.
 
         Returns
         -------
-        Список созданных объектов Category
+        List of created Category instances.
         """
+
         created: dict[str, Category] = {}
         for child, parent in tree:
-            cat = cls(child, created[parent].pk if parent is not None else None)
+            cat = cls(child,
+                      created[parent].pk if parent is not None else None)
             repo.add(cat)
             created[child] = cat
         return list(created.values())

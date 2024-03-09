@@ -12,15 +12,15 @@ def repo():
 
 
 def test_create_with_full_args_list():
-    e = Expense(amount=100, category=1, expense_date=datetime.now(),
+    e = Expense(cost=100, category=1, expense_date=datetime.now(),
                 added_date=datetime.now(), comment='test', pk=1)
-    assert e.amount == 100
+    assert e.cost == 100
     assert e.category == 1
 
 
 def test_create_brief():
     e = Expense(100, 1)
-    assert e.amount == 100
+    assert e.cost == 100
     assert e.category == 1
 
 
