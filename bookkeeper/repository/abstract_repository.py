@@ -15,11 +15,18 @@ from typing import Generic, TypeVar, Protocol, Any
 class Model(Protocol):  # pylint: disable=too-few-public-methods
     """
     Model must contain pk attribute.
+    Model must contain only int, float, str and datetime.
+    Model can contain attributes of any arbitrary names, except pk.
+        => Implementations must not depend on anything except the pk,
+        i.e. rowid in sqlite3.
+    Model must contain at least one attribute besides pk
+        (also, some repos may handle empty objects)
 
     Attributes
     ----------
     pk : int
         Number to be used as primary key and id.
+        Initial aka empty value is 0.
     """
 
     pk: int
