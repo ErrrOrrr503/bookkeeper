@@ -27,6 +27,10 @@ def good_class():
                and self.literal == other.literal \
                and self.datetype == other.datetype
 
+        def __lt__(self, other):
+            if not isinstance(other, Good):
+                return NotImplemented
+            return self.pk < other.pk
 
 
     return Good
@@ -69,9 +73,8 @@ def good_other_class():
 
     return GoodOther
 
-@pytest.mark.parametrize('custom_class', ['good_class'])
-def test_init(tmp_path, custom_class, request):
-    cls = request.getfixturevalue(custom_class)
+def test_init(tmp_path, good_class):
+    cls = good_class
     db_filename = tmp_path / 'temp.db'
     SqliteRepository(db_filename = db_filename, cls = cls)
 
@@ -81,27 +84,25 @@ def test_cant_store_empty(tmp_path, empty_class):
     with pytest.raises(TypeError):
         SqliteRepository(db_filename = db_filename, cls = cls)
 
-@pytest.mark.parametrize('custom_class', ['good_class'])
-def test_crud_new_db(tmp_path, custom_class, request):
-    cls = request.getfixturevalue(custom_class)
+def test_crud_new_db(tmp_path, good_class):
+    cls = good_class
     db_filename = tmp_path / 'temp.db'
     repo = SqliteRepository(db_filename = db_filename, cls = cls)
 
     obj = cls()
     pk = repo.add(obj)
     assert obj.pk == pk
-    obj1 = repo.get(pk)
     assert repo.get(pk) == obj
-    #obj2 = custom_class()
-    #obj2.pk = pk
-    #repo.update(obj2)
-    #assert repo.get(pk) == obj2
-    #repo.delete(pk)
-    #assert repo.get(pk) is None
+    obj1 = cls()
+    obj1.pk = pk
+    obj1.integer = 641
+    repo.update(obj1)
+    assert repo.get(pk) == obj1
+    repo.delete(pk)
+    assert repo.get(pk) is None
 
-@pytest.mark.parametrize('custom_class', ['good_class'])
-def test_crud_existing_db(tmp_path, custom_class, request):
-    cls = request.getfixturevalue(custom_class)
+def test_crud_existing_db(tmp_path, good_class):
+    cls = good_class
     db_filename = tmp_path / 'temp.db'
     repo = SqliteRepository(db_filename = db_filename, cls = cls)
 
@@ -111,15 +112,22 @@ def test_crud_existing_db(tmp_path, custom_class, request):
     assert obj.pk == pk
     assert repo.get(pk) == obj
 
+    # repo1 uses db, created by repo
     repo1 = SqliteRepository(db_filename = db_filename, cls = cls)
     obj1 = cls()
     pk1 = repo1.add(obj1)
     assert obj1.pk == pk1
     assert repo1.get(pk1) == obj1
+    obj2 = cls()
+    obj2.pk = pk
+    obj2.integer = 641
+    repo.update(obj2)
+    assert repo.get(pk) == obj2
+    repo.delete(pk)
+    assert repo.get(pk) is None
 
-@pytest.mark.parametrize('custom_class', ['good_class'])
-def test_cannot_add_with_filled_pk(tmp_path, custom_class, request):
-    cls = request.getfixturevalue(custom_class)
+def test_cannot_add_with_filled_pk(tmp_path, good_class):
+    cls = good_class
     db_filename = tmp_path / 'temp.db'
     repo = SqliteRepository(db_filename = db_filename, cls = cls)
 
@@ -150,3 +158,60 @@ def test_cannot_add_other_type(tmp_path, good_class, good_other_class):
     obj = good_other_class
     with pytest.raises(ValueError):
         repo.add(obj)
+
+def test_cannot_update_other_type(tmp_path, good_class, good_other_class):
+    cls = good_class
+    db_filename = tmp_path / 'temp.db'
+    repo = SqliteRepository(db_filename = db_filename, cls = cls)
+
+    obj = good_class()
+    pk = repo.add(obj)
+    obj1 = good_other_class
+    obj1.pk = pk
+    with pytest.raises(ValueError):
+        repo.update(obj1)
+
+def test_cannot_update_absent(tmp_path, good_class):
+    cls = good_class
+    db_filename = tmp_path / 'temp.db'
+    repo = SqliteRepository(db_filename = db_filename, cls = cls)
+
+    obj = good_class()
+    # pk = 0
+    with pytest.raises(ValueError):
+        repo.update(obj)
+    obj.pk = 146
+    with pytest.raises(ValueError):
+        repo.update(obj)
+
+def test_cannot_delete_absent(tmp_path, good_class):
+    cls = good_class
+    db_filename = tmp_path / 'temp.db'
+    repo = SqliteRepository(db_filename = db_filename, cls = cls)
+
+    with pytest.raises(KeyError):
+        repo.delete(0)
+    with pytest.raises(KeyError):
+        repo.delete(146)
+
+def test_get_all(tmp_path, good_class):
+    cls = good_class
+    db_filename = tmp_path / 'temp.db'
+    repo = SqliteRepository(db_filename = db_filename, cls = cls)
+
+    assert repo.get_all() == []
+
+    obj_list = []
+    dt = datetime.now()
+    for _ in range(5):
+        obj = cls()
+        obj.datetype = dt
+        repo.add(obj)
+        obj_list.append(obj)
+    assert repo.get_all().sort() == obj_list.sort()
+
+    assert repo.get_all({'pk': obj_list[0].pk}) == [ obj_list[0] ]
+    assert obj_list.sort() == repo.get_all({'integer': obj_list[0].integer,
+                                            'floating': obj_list[0].floating,
+                                            'literal': obj_list[0].literal,
+                                            'datetype': obj_list[0].datetype}).sort()
