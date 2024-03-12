@@ -1,0 +1,30 @@
+"""
+Budget restriction model
+"""
+
+from datetime import datetime
+
+
+class Budget:
+    """
+
+    Represents budget restriction.
+    For specific category and time period.
+
+    Attributes
+    ----------
+    pk : int
+        id in repository (database).
+    cost_limit : int
+        Budget limit.
+        Units are 0.01 of a currency unit - typical for USD/RUB.
+    category : int
+        id (or pk) of budget category - class Category instance.
+    period : datetime
+        Budget period.
+
+    """
+    pk: int = 0
+    cost_limit: int
+    category: int
+    period: datetime

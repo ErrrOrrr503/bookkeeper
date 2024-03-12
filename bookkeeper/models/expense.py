@@ -13,8 +13,9 @@ class Expense:
 
     Attributes
     ----------
-    cost : float
+    cost : int
         The cost of the operation.
+        Units are 0.01 of a currency unit - typical for USD/RUB.
     category : int
         id (or pk) of expense category - class Category instance.
     expense_date : datetime
@@ -27,7 +28,7 @@ class Expense:
         id in repository (database).
     """
 
-    cost: float
+    cost: int
     category: int
     expense_date: datetime = field(default_factory=datetime.now)
     added_date: datetime = field(default_factory=datetime.now)
