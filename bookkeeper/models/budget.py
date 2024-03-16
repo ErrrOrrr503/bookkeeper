@@ -2,8 +2,9 @@
 Budget restriction model
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import timedelta
+
 
 @dataclass(slots=True)
 class Budget:

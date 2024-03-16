@@ -7,6 +7,7 @@ import os
 # only for determining project path
 import bookkeeper
 
+
 class Configurator():
     """
     Configurator - config manager for bookkeeper.
@@ -29,7 +30,7 @@ class Configurator():
 
     config_files: list[tuple[str, str]] = [
         ('config/config.ini', 'prj_rel'),
-        ('config.ini', 'rel') # will be written
+        ('config.ini', 'rel')  # will be written
     ]
     _parser: ConfigParser = ConfigParser()
     _writefilename: str
@@ -48,7 +49,7 @@ class Configurator():
 
     def __getitem__(self, item_name: str) -> Any:
         return self._parser[item_name]
-    
+
     def write(self) -> None:
         with open(self._writefilename, 'w') as writefile:
             self._parser.write(writefile)

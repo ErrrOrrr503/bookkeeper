@@ -165,23 +165,25 @@ class SqliteRepository(AbstractRepository[T]):
             # store timedelta as str
             # 'days seconds microseconds'
             # to allow absolute ranges and percision
-            d = str(value.days)
-            s = str(value.seconds)
-            us = str(value.microseconds)
-            return ' '.join([d, s, us])
+            days = str(value.days)
+            secs = str(value.seconds)
+            usecs = str(value.microseconds)
+            return ' '.join([days, secs, usecs])
         return value
-    
+
     def _sql_typed_setattr(self, obj: T, attr_str: str, value: Any) -> None:
         """ Type-aware setattr """
-        if self._fields[attr_str] in (datetime, datetime | None) and isinstance(value, str):
+        if (self._fields[attr_str] in (datetime, datetime | None)
+                and isinstance(value, str)):
             setattr(obj, attr_str,
                     datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f'))
-        elif self._fields[attr_str] in (timedelta, timedelta | None) and isinstance(value, str):
+        elif (self._fields[attr_str] in (timedelta, timedelta | None)
+              and isinstance(value, str)):
             d_s_us = value.split()
-            td = timedelta(days=int(d_s_us[0]),
-                           seconds=int(d_s_us[1]),
-                           microseconds=int(d_s_us[2]))
-            setattr(obj, attr_str, td)
+            tmdel = timedelta(days=int(d_s_us[0]),
+                              seconds=int(d_s_us[1]),
+                              microseconds=int(d_s_us[2]))
+            setattr(obj, attr_str, tmdel)
         else:
             setattr(obj, attr_str, value)
 
