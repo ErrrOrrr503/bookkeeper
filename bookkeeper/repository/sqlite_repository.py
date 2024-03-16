@@ -4,11 +4,13 @@ Sqlite3 repository.
 
 import sqlite3
 from typing import Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from inspect import get_annotations
 from contextlib import closing
+from os.path import expanduser
 
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
+from bookkeeper.config.configurator import Configurator
 
 
 class SqliteRepository(AbstractRepository[T]):
@@ -19,16 +21,20 @@ class SqliteRepository(AbstractRepository[T]):
     Creates table, named according to __name__ attribute of the stored class.
     The table contains fields, names according to attributes of the stored class.
     As __name__ and attribute names can't contain sql injections, they are used directly.
-    Contents of the fields are protected with placeholders.
+    Contents of the fields are protected with placeholders
+    (in fact sqlite3 lib supports placeholders only for values).
 
     pk is the rowid, (0 is a valid ROWID,
     but it will never be automatically assigned by SQLite).
+
+    The repository can explicitly hold non standart for db types,
+    i.e. datetime and timedelta. Handling is perfomed in _sql_type
+    methods.
 
     Attributes
     ----------
     _db_filename : str
         Filename of the database file.
-        TODO: config where name will be stored.
     _table_name : str
         Name of the database table. Matches the name of the class that stored.
     _fields : dict
@@ -57,8 +63,11 @@ class SqliteRepository(AbstractRepository[T]):
     _names_placeholders: str
     _cls: type[T]
 
-    def __init__(self, db_filename: str, cls: type[T]) -> None:
-        self._db_filename = db_filename
+    def __init__(self, cls: type[T], db_filename: str | None = None,
+                 custom_configurator: Configurator | None = None) -> None:
+        self._init_configuration(custom_configurator)
+        if db_filename is not None:
+            self._db_filename = db_filename
         self._cls = cls
         self._table_name = cls.__name__.lower()
         self._fields = get_annotations(cls, eval_str=True)
@@ -72,6 +81,16 @@ class SqliteRepository(AbstractRepository[T]):
             )
         self._init_database()
         self._init_helper_strings()
+
+    def _init_configuration(self, confer: Configurator | None) -> None:
+        """
+        Init attributes according to configurator.
+        Generally, default Configurator() is used.
+        Custom confer is only for testing purposes.
+        """
+        if confer is None:
+            confer = Configurator()
+        self._db_filename = expanduser(confer[type(self).__name__]['db_file'])
 
     def _init_helper_strings(self) -> None:
         attr_names = list(self._fields.keys())
@@ -105,22 +124,7 @@ class SqliteRepository(AbstractRepository[T]):
             )
             # create fields
             for field in self._fields:
-                # determine type of creatable field
-                field_type = self._fields[field]
-                sql_type = None
-                if field_type in (int, int | None):
-                    sql_type = 'INTEGER'
-                elif field_type in (float, float | None):
-                    sql_type = 'REAL'
-                elif field_type in (str, str | None):
-                    sql_type = 'TEXT'
-                elif field_type in (datetime, datetime | None):
-                    sql_type = 'TEXT'
-                else:
-                    raise TypeError(
-                        'Only int, float, str and datetime are supported.'
-                        f'But {field} in {self._table_name} is {field_type}'
-                    )
+                sql_type = self._sql_type_for_field(field)
                 # create the field
                 try:
                     cur.execute(
@@ -131,8 +135,58 @@ class SqliteRepository(AbstractRepository[T]):
                     # when trying to add existing column
                     pass
 
-    def _values_list_from_obj(self, obj: T) -> list[str]:
-        return [getattr(obj, x) for x in self._fields]
+    def _sql_type_for_field(self, field: str) -> str:
+        """
+        Return sql type according to field type.
+        I.e. 'TEXT' for 'line' of type str.
+        """
+        field_type = self._fields[field]
+        sql_type = None
+        if field_type in (int, int | None):
+            sql_type = 'INTEGER'
+        elif field_type in (float, float | None):
+            sql_type = 'REAL'
+        elif field_type in (str, str | None):
+            sql_type = 'TEXT'
+        elif field_type in (datetime, datetime | None):
+            sql_type = 'TEXT'
+        elif field_type in (timedelta, timedelta | None):
+            sql_type = 'TEXT'
+        else:
+            raise TypeError(
+                'Only int, float, str, datetime and timedelta are supported.'
+                f'But {field} in {self._table_name} is {field_type}'
+            )
+        return sql_type
+
+    def _type_to_sql_type(self, value: Any) -> Any:
+        """ Convert (prepare) type for saving to db """
+        if type(value) == timedelta:
+            # store timedelta as str
+            # 'days seconds microseconds'
+            # to allow absolute ranges and percision
+            d = str(value.days)
+            s = str(value.seconds)
+            us = str(value.microseconds)
+            return ' '.join([d, s, us])
+        return value
+    
+    def _sql_typed_setattr(self, obj: T, attr_str: str, value: Any) -> None:
+        """ Type-aware setattr """
+        if self._fields[attr_str] in (datetime, datetime | None) and isinstance(value, str):
+            setattr(obj, attr_str,
+                    datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f'))
+        elif self._fields[attr_str] in (timedelta, timedelta | None) and isinstance(value, str):
+            d_s_us = value.split()
+            td = timedelta(days=int(d_s_us[0]),
+                           seconds=int(d_s_us[1]),
+                           microseconds=int(d_s_us[2]))
+            setattr(obj, attr_str, td)
+        else:
+            setattr(obj, attr_str, value)
+
+    def _values_list_from_obj(self, obj: T) -> list[Any]:
+        return [self._type_to_sql_type(getattr(obj, x)) for x in self._fields]
 
     def add(self, obj: T) -> int:
         if type(obj) != self._cls:
@@ -169,13 +223,7 @@ class SqliteRepository(AbstractRepository[T]):
                 obj = self._cls()
                 attr_values = iter(rows[0])
                 for attr_str in self._fields.keys():
-                    # unlike int, float and str, datetime needs conversion
-                    if self._fields[attr_str] in (datetime, datetime | None):
-                        setattr(obj, attr_str,
-                                datetime.strptime(next(attr_values),
-                                                  '%Y-%m-%d %H:%M:%S.%f'))
-                    else:
-                        setattr(obj, attr_str, next(attr_values))
+                    self._sql_typed_setattr(obj, attr_str, next(attr_values))
         return obj
 
     def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
@@ -187,7 +235,7 @@ class SqliteRepository(AbstractRepository[T]):
                 cur.execute(
                     f'SELECT {self._names} FROM {self._table_name}' +
                     ' WHERE ' + ' AND '.join([f'{name} = ?' for name in where.keys()]),
-                    [where[name] for name in where.keys()]
+                    [self._type_to_sql_type(where[name]) for name in where.keys()]
                 )
             else:
                 cur.execute(
@@ -199,13 +247,7 @@ class SqliteRepository(AbstractRepository[T]):
                 obj = self._cls()
                 attr_values = iter(row)
                 for attr_str in self._fields.keys():
-                    # unlike int, float and str, datetime needs conversion
-                    if self._fields[attr_str] in (datetime, datetime | None):
-                        setattr(obj, attr_str,
-                                datetime.strptime(next(attr_values),
-                                                  '%Y-%m-%d %H:%M:%S.%f'))
-                    else:
-                        setattr(obj, attr_str, next(attr_values))
+                    self._sql_typed_setattr(obj, attr_str, next(attr_values))
                 ret_list.append(obj)
         return ret_list
 

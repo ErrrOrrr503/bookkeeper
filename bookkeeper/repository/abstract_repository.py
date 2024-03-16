@@ -15,7 +15,7 @@ from typing import Generic, TypeVar, Protocol, Any
 class Model(Protocol):  # pylint: disable=too-few-public-methods
     """
     Model must contain pk attribute.
-    Model must contain only int, float, str and datetime.
+    Model must contain only int, float, str, datetime or timedelta.
     Model can contain attributes of any arbitrary names, except pk.
         => Implementations must not depend on anything except the pk,
         i.e. rowid in sqlite3.

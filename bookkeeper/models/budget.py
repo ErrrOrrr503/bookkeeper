@@ -2,9 +2,10 @@
 Budget restriction model
 """
 
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
-
+@dataclass(slots=True)
 class Budget:
     """
 
@@ -24,7 +25,8 @@ class Budget:
         Budget period.
 
     """
-    pk: int = 0
+
     cost_limit: int
     category: int
-    period: datetime
+    period: timedelta
+    pk: int = 0

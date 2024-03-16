@@ -1,5 +1,6 @@
 from bookkeeper.repository.sqlite_repository import SqliteRepository
-from datetime import datetime
+from bookkeeper.config.configurator import Configurator
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -18,6 +19,7 @@ def good_class():
         floating: float = 146.0
         literal: str = 'hello world'
         datetype: datetime = datetime.now()
+        timedel: timedelta = datetime.now() - datetime(1970, 1, 1)
 
         def __eq__(self, other):
             if not isinstance(other, Good):
@@ -25,7 +27,8 @@ def good_class():
             return self.integer == other.integer \
                and self.floating == other.floating \
                and self.literal == other.literal \
-               and self.datetype == other.datetype
+               and self.datetype == other.datetype \
+               and self.timedel == other.timedel
 
         def __lt__(self, other):
             if not isinstance(other, Good):
@@ -59,6 +62,7 @@ def bad_no_pk_class():
         floating: float = 146.0
         literal: str = 'hello world'
         datetype: datetime = datetime.now()
+        timedel: timedelta = datetime.now() - datetime(1970, 1, 1)
 
     return Bad
 
@@ -70,8 +74,20 @@ def good_other_class():
         floating: float = 146.0
         literal: str = 'hello world'
         datetype: datetime = datetime.now()
+        timedel: timedelta = datetime.now() - datetime(1970, 1, 1)
 
     return GoodOther
+
+@pytest.fixture(scope='session')
+def custom_configurator(tmp_path_factory):
+    conffile = tmp_path_factory.mktemp('tmp') / 'config.ini'
+    dbfile = tmp_path_factory.mktemp('tmp') / 'temp.db'
+    with open(conffile, 'w') as cf:
+        cf.write(f"""
+            [SqliteRepository]
+            db_file = {dbfile}
+        """)
+    return Configurator([(conffile, 'abs')])
 
 def test_init(tmp_path, good_class):
     cls = good_class
@@ -214,4 +230,30 @@ def test_get_all(tmp_path, good_class):
     assert obj_list.sort() == repo.get_all({'integer': obj_list[0].integer,
                                             'floating': obj_list[0].floating,
                                             'literal': obj_list[0].literal,
-                                            'datetype': obj_list[0].datetype}).sort()
+                                            'datetype': obj_list[0].datetype,
+                                            'timedel': obj_list[0].timedel}).sort()
+
+def test_configurator_can_create_default(good_class, custom_configurator):
+    cls = good_class
+    def_config_files = Configurator.config_files
+    Configurator.config_files = custom_configurator.config_files
+    repo = SqliteRepository(cls)
+    conf = Configurator()
+    assert repo._db_filename == conf['SqliteRepository']['db_file']
+    Configurator.config_files = def_config_files
+
+def test_configurator_crud(good_class, custom_configurator):
+    cls= good_class
+    repo = SqliteRepository(cls = cls, custom_configurator=custom_configurator)
+
+    obj = cls()
+    pk = repo.add(obj)
+    assert obj.pk == pk
+    assert repo.get(pk) == obj
+    obj1 = cls()
+    obj1.pk = pk
+    obj1.integer = 641
+    repo.update(obj1)
+    assert repo.get(pk) == obj1
+    repo.delete(pk)
+    assert repo.get(pk) is None
