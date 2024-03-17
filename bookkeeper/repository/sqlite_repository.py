@@ -15,7 +15,7 @@ from bookkeeper.config.configurator import Configurator
 
 class SqliteRepository(AbstractRepository[T]):
     """
-    Sqlite3 repository, stores data (models) in a database.
+    Sqlite3 repository, stores data (models of some type) in a database.
 
     The repo creates db file if not already exists.
     Creates table, named according to __name__ attribute of the stored class.
@@ -27,9 +27,13 @@ class SqliteRepository(AbstractRepository[T]):
     pk is the rowid, (0 is a valid ROWID,
     but it will never be automatically assigned by SQLite).
 
-    The repository can explicitly hold non standart for db types,
-    i.e. datetime and timedelta. Handling is perfomed in _sql_type
+    The repository can hold non standard for db types,
+    i.e. datetime and timedelta. Handling is performed in _sql_type
     methods.
+
+    Relevant configuration:
+    [SqliteRepository]
+    db_file = <file>
 
     Attributes
     ----------
@@ -65,9 +69,10 @@ class SqliteRepository(AbstractRepository[T]):
 
     def __init__(self, cls: type[T], db_filename: str | None = None,
                  custom_configurator: Configurator | None = None) -> None:
-        self._init_configuration(custom_configurator)
         if db_filename is not None:
             self._db_filename = db_filename
+        else:
+            self._init_configuration(custom_configurator)
         self._cls = cls
         self._table_name = cls.__name__.lower()
         self._fields = get_annotations(cls, eval_str=True)

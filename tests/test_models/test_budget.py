@@ -27,9 +27,9 @@ def test_create_with_full_args_list(datetime1, datetime2):
 
 
 def test_create_brief(datetime1, datetime2):
-    e = Budget(100, 1, datetime2 - datetime1)
+    e = Budget(100, datetime2 - datetime1)
     assert e.cost_limit == 100
-    assert e.category == 1
+    assert e.category == None
     assert e.period == datetime2 - datetime1
 
 

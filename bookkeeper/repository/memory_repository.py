@@ -13,7 +13,7 @@ class MemoryRepository(AbstractRepository[T]):
     In-memory repository. Stores data in python dict.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, cls: Any = None) -> None:
         self._container: dict[int, T] = {}
         self._counter = count(1)
 

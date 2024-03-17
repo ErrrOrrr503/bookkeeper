@@ -3,7 +3,7 @@ Expense category model
 """
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Iterator, Any
 
 from ..repository.abstract_repository import AbstractRepository
 
@@ -25,9 +25,14 @@ class Category:
         Primary key for storing the category in a repository.
     """
 
-    name: str
+    name: str = 'Category'
     parent: int | None = None
     pk: int = 0
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self.name == other.name and self.parent == other.parent
 
     def get_parent(self,
                    repo: AbstractRepository['Category']) -> 'Category | None':

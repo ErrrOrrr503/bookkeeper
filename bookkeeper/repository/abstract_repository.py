@@ -38,8 +38,17 @@ T = TypeVar('T', bound=Model)
 
 class AbstractRepository(ABC, Generic[T]):
     """
-    Repository abstract class (in fact, interface).
+    Repository for type[T] objects abstract class.
     """
+
+    @abstractmethod
+    def __init__(self, cls: type[T] | None = None):
+        """
+        Init the repo according to the given type.
+        Implementations may, or may not use cls, but have to accept it.
+        (as it is crucial for i.e. sqlite implementation)
+        """
+        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def add(self, obj: T) -> int:

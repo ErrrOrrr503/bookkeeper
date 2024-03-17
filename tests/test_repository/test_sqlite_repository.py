@@ -12,6 +12,32 @@ def empty_class():
     return Empty
 
 @pytest.fixture
+def none_class():
+    class None_values:
+        pk: int = 0
+        integer: int | None = None
+        floating: float | None = None
+        literal: str | None = None
+        datetype: datetime | None = None
+        timedel: timedelta | None = None
+
+        def __eq__(self, other):
+            if not isinstance(other, None_values):
+                return NotImplemented
+            return self.integer == other.integer \
+               and self.floating == other.floating \
+               and self.literal == other.literal \
+               and self.datetype == other.datetype \
+               and self.timedel == other.timedel
+
+        def __lt__(self, other):
+            if not isinstance(other, None_values):
+                return NotImplemented
+            return self.pk < other.pk
+
+    return None_values
+
+@pytest.fixture
 def good_class():
     class Good():
         pk: int = 0
@@ -34,7 +60,6 @@ def good_class():
             if not isinstance(other, Good):
                 return NotImplemented
             return self.pk < other.pk
-
 
     return Good
 
@@ -100,8 +125,9 @@ def test_cant_store_empty(tmp_path, empty_class):
     with pytest.raises(TypeError):
         SqliteRepository(db_filename = db_filename, cls = cls)
 
-def test_crud_new_db(tmp_path, good_class):
-    cls = good_class
+@pytest.mark.parametrize('custom_class', ['good_class', 'none_class'])
+def test_crud_new_db(tmp_path, custom_class, request):
+    cls = request.getfixturevalue(custom_class)
     db_filename = tmp_path / 'temp.db'
     repo = SqliteRepository(db_filename = db_filename, cls = cls)
 
@@ -210,8 +236,9 @@ def test_cannot_delete_absent(tmp_path, good_class):
     with pytest.raises(KeyError):
         repo.delete(146)
 
-def test_get_all(tmp_path, good_class):
-    cls = good_class
+@pytest.mark.parametrize('custom_class', ['good_class', 'none_class'])
+def test_get_all(tmp_path, custom_class, request):
+    cls = request.getfixturevalue(custom_class)
     db_filename = tmp_path / 'temp.db'
     repo = SqliteRepository(db_filename = db_filename, cls = cls)
 

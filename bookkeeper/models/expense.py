@@ -4,6 +4,7 @@ Expense operation representation
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 
 @dataclass(slots=True)
@@ -28,9 +29,18 @@ class Expense:
         id in repository (database).
     """
 
-    cost: int
-    category: int
+    cost: int = 0
+    category: int | None = None
     expense_date: datetime = field(default_factory=datetime.now)
     added_date: datetime = field(default_factory=datetime.now)
     comment: str = ''
     pk: int = 0
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return (self.cost == other.cost
+                and self.category == other.category
+                and self.expense_date == other.expense_date
+                and self.added_date == other.added_date
+                and self.comment == other.comment)
