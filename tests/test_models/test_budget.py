@@ -34,6 +34,6 @@ def test_create_brief(datetime1, datetime2):
 
 
 def test_can_add_to_repo(repo, datetime1, datetime2):
-    e = Budget(100, 1, datetime2 - datetime1)
+    e = Budget(100, datetime2 - datetime1, 1)
     pk = repo.add(e)
     assert e.pk == pk

@@ -11,9 +11,9 @@ def test_cannot_create_abstract_repository():
 def test_can_create_subclass():
     class Test(AbstractRepository):
         def __init__(self, cls = None): pass
-        def add(self, obj): pass
+        def add(self, obj): return 0
         def get(self, pk): pass
-        def get_all(self, where=None): pass
+        def get_all(self, where=None): return []
         def update(self, obj): pass
         def delete(self, pk): pass
 
