@@ -61,7 +61,7 @@ verbose = True
 
 checks.append(Checker("tests", "pytest --cov", print_output=verbose))
 checks.append(Checker("mypy", "mypy --strict bookkeeper", print_output=verbose))
-checks.append(Checker("pylint", "pylint bookkeeper", expected_retcode=None, print_output=verbose, output_hook=pylint_check_score))
+checks.append(Checker("pylint", "pylint --extension-pkg-whitelist=PySide6 bookkeeper", expected_retcode=None, print_output=verbose, output_hook=pylint_check_score))
 checks.append(Checker("flake8", "flake8 bookkeeper", print_output=verbose))
 
 ###############################################################################

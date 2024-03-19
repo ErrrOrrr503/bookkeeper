@@ -2,12 +2,21 @@
 Pyside6 view implementation.
 """
 from inspect import get_annotations
-from typing import Callable
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QComboBox
+from typing import Callable, Any
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 
 from bookkeeper.view.abstract_view import ExpenseEntry, AbstractExpenses
 
-class ExpensesTableWidget(QTableWidget):
+# Mypy ignores are set, due to mypy is unable to determine dynamic
+# base classes. See https://github.com/python/mypy/issues/2477
+class ExpensesTableWidgetMeta(type(AbstractExpenses), # type: ignore[misc]
+                              type(QTableWidget)): # type: ignore[misc]
+    """
+    Metaclass for correct inheritance of ExpensesTableWidget from AbstractExpenses.
+    """
+
+class ExpensesTableWidget(QTableWidget, AbstractExpenses,
+                          metaclass=ExpensesTableWidgetMeta):
     """
     Editable expenses table widget
     """
@@ -16,7 +25,7 @@ class ExpensesTableWidget(QTableWidget):
     _expense_edited: Callable[[int, ExpenseEntry], None] | None = None
     _get_expense_attr_allowed: Callable[[str], list[str]] | None = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._annotations = get_annotations(ExpenseEntry, eval_str=True)
 
@@ -28,24 +37,33 @@ class ExpensesTableWidget(QTableWidget):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
         header.setStretchLastSection(True)
         self.verticalHeader().hide()
-
-        self.setEditTriggers(QAbstractItemView.DoubleClicked)
+        # QTableWidget.DoubleClicked does exist, but mypy doesn't recognize it
+        self.setEditTriggers(QTableWidget.DoubleClicked) # type: ignore[attr-defined]
 
     def set_at_position(self, position: int, entry: ExpenseEntry) -> None:
+        if self._cell_changed is not None:
+            # setting item is not editing. Editing comes from user
+            self.cellChanged.disconnect(self._cell_changed)
         for j, attr_str in enumerate(self._annotations.keys()):
             item = getattr(entry, attr_str)
             if self._get_expense_attr_allowed is not None:
                 possible_vals = self._get_expense_attr_allowed(attr_str)
                 if len(possible_vals) > 0:
-                    QCombo = QComboBox()
-                    QCombo.addItems(possible_vals)
-                    index = QCombo.findText(item)
+                    prev_widget = self.cellWidget(position, j)
+                    if isinstance(prev_widget, QComboBox):
+                        prev_widget.currentTextChanged.disconnect(self._qbox_changed)
+                    qcombo = QComboBox()
+                    qcombo.addItems(possible_vals)
+                    index = qcombo.findText(item)
                     if index >= 0:
-                        QCombo.setCurrentIndex(index)
-                    self.setCellWidget(position, j, QCombo)
+                        qcombo.setCurrentIndex(index)
+                    qcombo.currentTextChanged.connect(self._qbox_changed)
+                    self.setCellWidget(position, j, qcombo)
                     continue
-            QItem = QTableWidgetItem(item)
-            self.setItem(position, j, QItem)
+            qitem = QTableWidgetItem(item)
+            self.setItem(position, j, qitem)
+        if self._cell_changed is not None:
+            self.cellChanged.connect(self._cell_changed)
 
 
     def set_contents(self, entries: list[ExpenseEntry]) -> None:
@@ -53,8 +71,27 @@ class ExpensesTableWidget(QTableWidget):
         for row, entry in enumerate(entries):
             self.set_at_position(row, entry)
 
-    def connect_expense_edited(self, callback: Callable[[int, ExpenseEntry], None]):
+    def connect_expense_edited(self,
+                               callback: Callable[[int, ExpenseEntry], None]) -> None:
         self._expense_edited = callback
+        self.cellChanged.connect(self._cell_changed)
 
-    def connect_get_expense_attr_allowed(self, callback: Callable[[str], list[str]]):
+    def connect_get_expense_attr_allowed(self,
+                                         callback: Callable[[str], list[str]]) -> None:
         self._get_expense_attr_allowed = callback
+
+    def _qbox_changed(self, newtext: str) -> None:
+        self._cell_changed(self.currentRow(), self.currentColumn())
+
+    def _cell_changed(self, row: int, column: int) -> None:
+        entry = ExpenseEntry()
+        for i, field in enumerate(self._annotations.keys()):
+            item = self.item(row, i)
+            if item is None:
+                q_box = self.cellWidget(row, i)
+                val = q_box.currentText()
+            else:
+                val = item.text()
+            setattr(entry, field, val)
+        if self._expense_edited is not None:
+            self._expense_edited(row, entry)
