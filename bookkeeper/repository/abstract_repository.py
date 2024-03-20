@@ -48,7 +48,6 @@ class AbstractRepository(ABC, Generic[T]):
         Implementations may, or may not use cls, but have to accept it.
         (as it is crucial for i.e. sqlite implementation)
         """
-        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def add(self, obj: T) -> int:
@@ -66,8 +65,6 @@ class AbstractRepository(ABC, Generic[T]):
         Generated object's 'id'.
         """
 
-        raise NotImplementedError("Must implement this!")
-
     @abstractmethod
     def get(self, pk: int) -> T | None:
         """
@@ -82,8 +79,6 @@ class AbstractRepository(ABC, Generic[T]):
         -------
         Object of type T or None if no object is found.
         """
-
-        raise NotImplementedError("Must implement this!")
 
     @abstractmethod
     def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
@@ -102,8 +97,6 @@ class AbstractRepository(ABC, Generic[T]):
         List of objects that match the condition, may be empty.
         """
 
-        raise NotImplementedError("Must implement this!")
-
     @abstractmethod
     def update(self, obj: T) -> None:
         """
@@ -119,8 +112,6 @@ class AbstractRepository(ABC, Generic[T]):
         None
         """
 
-        raise NotImplementedError("Must implement this!")
-
     @abstractmethod
     def delete(self, pk: int) -> None:
         """
@@ -135,5 +126,3 @@ class AbstractRepository(ABC, Generic[T]):
         -------
         None
         """
-
-        raise NotImplementedError("Must implement this!")

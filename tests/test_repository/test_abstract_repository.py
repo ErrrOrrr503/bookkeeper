@@ -19,3 +19,14 @@ def test_can_create_subclass():
 
     t = Test()
     assert isinstance(t, AbstractRepository)
+
+def test_cant_create_subclass_without_overriding():
+    class Test(AbstractRepository):
+        def __init__(self, cls = None): pass
+        def get(self, pk): pass
+        def get_all(self, where=None): return []
+        def update(self, obj): pass
+        def delete(self, pk): pass
+
+    with pytest.raises(TypeError):
+        t = Test()

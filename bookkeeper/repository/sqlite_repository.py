@@ -166,7 +166,7 @@ class SqliteRepository(AbstractRepository[T]):
 
     def _type_to_sql_type(self, value: Any) -> Any:
         """ Convert (prepare) type for saving to db """
-        if type(value) == timedelta:
+        if type(value) is timedelta:
             # store timedelta as str
             # 'days seconds microseconds'
             # to allow absolute ranges and percision
@@ -196,7 +196,7 @@ class SqliteRepository(AbstractRepository[T]):
         return [self._type_to_sql_type(getattr(obj, x)) for x in self._fields]
 
     def add(self, obj: T) -> int:
-        if type(obj) != self._cls:
+        if type(obj) is not self._cls:
             raise ValueError('Trying to add an object to the repository of other type')
         if getattr(obj, 'pk', None) != 0:
             raise ValueError(f'Trying to add object {obj} with filled pk attr')
@@ -259,7 +259,7 @@ class SqliteRepository(AbstractRepository[T]):
         return ret_list
 
     def update(self, obj: T) -> None:
-        if type(obj) != self._cls:
+        if type(obj) is not self._cls:
             raise ValueError('Trying to update an object'
                              'in the repository of other type')
         with (closing(sqlite3.connect(self._db_filename)) as con,

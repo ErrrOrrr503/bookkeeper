@@ -7,13 +7,15 @@ from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QComb
 
 from bookkeeper.view.abstract_view import ExpenseEntry, AbstractExpenses
 
+
 # Mypy ignores are set, due to mypy is unable to determine dynamic
 # base classes. See https://github.com/python/mypy/issues/2477
-class ExpensesTableWidgetMeta(type(AbstractExpenses), # type: ignore[misc]
-                              type(QTableWidget)): # type: ignore[misc]
+class ExpensesTableWidgetMeta(type(AbstractExpenses),  # type: ignore[misc]
+                              type(QTableWidget)):     # type: ignore[misc]
     """
     Metaclass for correct inheritance of ExpensesTableWidget from AbstractExpenses.
     """
+
 
 class ExpensesTableWidget(QTableWidget, AbstractExpenses,
                           metaclass=ExpensesTableWidgetMeta):
@@ -38,7 +40,7 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
         header.setStretchLastSection(True)
         self.verticalHeader().hide()
         # QTableWidget.DoubleClicked does exist, but mypy doesn't recognize it
-        self.setEditTriggers(QTableWidget.DoubleClicked) # type: ignore[attr-defined]
+        self.setEditTriggers(QTableWidget.DoubleClicked)  # type: ignore[attr-defined]
 
     def set_at_position(self, position: int, entry: ExpenseEntry) -> None:
         if self._cell_changed is not None:
@@ -64,7 +66,6 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
             self.setItem(position, j, qitem)
         if self._cell_changed is not None:
             self.cellChanged.connect(self._cell_changed)
-
 
     def set_contents(self, entries: list[ExpenseEntry]) -> None:
         self.setRowCount(len(entries))
