@@ -6,6 +6,7 @@ from datetime import datetime
 import pytest
 from mock import Mock
 from pytestqt.qt_compat import qt_api
+from PySide6.QtCore import Qt
 
 @pytest.fixture
 def expenses_list():
@@ -67,3 +68,15 @@ def test_edit_qbox(qtbot, expenses_list):
     e = expenses_list[0]
     e.category = 'Rock\'n\'Roll'
     expense_changed_callback.assert_called_with(0, e)
+
+def test_delete_entry(qtbot, expenses_list):
+    expense_delete_callback = Mock()
+    widget = ExpensesTableWidget()
+    widget.connect_get_expense_attr_allowed(get_attr_allowed)
+    widget.connect_expense_delete(expense_delete_callback)
+    widget.set_contents(expenses_list)
+    qtbot.addWidget(widget)
+    widget.show()
+    widget.setCurrentCell(0, 0)
+    qtbot.keyClick(widget, Qt.Key_Delete)
+    expense_delete_callback.assert_called_with([0])

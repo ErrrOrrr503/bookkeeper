@@ -10,9 +10,9 @@ from dataclasses import dataclass
 @dataclass
 class ExpenseEntry:
     """
-    Type that represents ExpensesTable row.
+    Type that represents Expenses entry.
 
-    Default attributes represent column names.
+    Default attributes represent column/sections names.
     All attributes are strings. View's job is not to format, but to draw.
     """
     date: str = 'Date'
@@ -46,6 +46,14 @@ class AbstractExpenses(ABC):
         """
 
     @abstractmethod
+    def connect_expense_delete(self,
+                               callback: Callable[[list[int]], None]) -> None:
+        """
+        Register callback on "an entry is deleted".
+        Accepts list of deleted entries' positions.
+        """
+
+    @abstractmethod
     def connect_get_expense_attr_allowed(self,
                                          callback: Callable[[str], list[str]]) -> None:
         """
@@ -53,3 +61,17 @@ class AbstractExpenses(ABC):
         ExpenseEntry's attribute can take only specific values.
         This enables view to make optimizations, i.e. dropdowns
         """
+
+
+@dataclass
+class BudgetEntry:
+    """
+    Type that represents ExpensesTable row.
+
+    Default attributes represent columns/sections names.
+    All attributes are strings. View's job is not to format, but to draw.
+    """
+    period: str = "Period"
+    cost_limit: str = "Limit"
+    spent: str = "Spent"
+    category: str = "Category"
