@@ -1,5 +1,5 @@
-from bookkeeper.view.abstract_view import ExpenseEntry
-from bookkeeper.view.qt6_view import ExpensesTableWidget
+from bookkeeper.view.abstract_view import ExpenseEntry, BudgetEntry
+from bookkeeper.view.qt6_view import ExpensesTableWidget, BudgetTableWidget
 
 from datetime import datetime
 
@@ -91,7 +91,44 @@ class TestExpenses:
         widget.set_contents(expenses_list)
         qtbot.addWidget(widget)
         widget.show()
-        qtbot.stop()
+        #qtbot.stop()
         widget.setCurrentCell(0, 0)
         qtbot.keyClick(widget, Qt.Key_Delete)
         expense_delete_callback.assert_called_with([0])
+
+    def test_context_add_entry(self, qtbot, expenses_list):
+        expense_delete_callback = Mock()
+        expense_add_callback = Mock()
+        widget = ExpensesTableWidget()
+        widget.connect_get_attr_allowed(self.get_attr_allowed)
+        widget.connect_delete(expense_delete_callback)
+        widget.connect_add(expense_add_callback)
+        widget.set_contents(expenses_list)
+        qtbot.addWidget(widget)
+        widget.show()
+        #qtbot.stop()
+        # TODO: autoclick
+        #expense_add_callback.assert_called()
+
+class TestBudgets:
+    @pytest.fixture
+    def budgets_list(self):
+        return [
+            BudgetEntry("Day", "146", "100", "All"),
+            BudgetEntry("Week", "146", "100", "All"),
+            BudgetEntry("Month", "146", "100", "Souls")
+        ]
+
+    @staticmethod
+    def get_attr_allowed(attr_str):
+        if attr_str == 'category':
+            return [ 'All', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
+        return []
+
+    def test_can_create(self, qtbot, budgets_list):
+        widget = BudgetTableWidget()
+        widget.connect_get_attr_allowed(self.get_attr_allowed)
+        widget.set_contents(budgets_list)
+        qtbot.addWidget(widget)
+        widget.show()
+        #qtbot.stop()

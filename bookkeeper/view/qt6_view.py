@@ -3,12 +3,36 @@ Pyside6 view implementation.
 """
 from inspect import get_annotations
 from typing import Callable, Any
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QMenu
+from PySide6.QtWidgets import QWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QMenu, QMessageBox
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent, QContextMenuEvent
 
-from bookkeeper.view.abstract_view import T, AbstractEntries, ExpenseEntry, BudgetEntry
+from bookkeeper.view.abstract_view import T, AbstractEntries, ExpenseEntry, BudgetEntry, CallbackError, CallbackWarning
 
+
+def call_callback(widget: QWidget, callback: Callable, *args, **kwargs) -> Any:
+    """ helper function to call callbacks and handle exceptions """
+    title = None
+    ret = None
+    msg = ''
+    box: QMessageBox
+    try:
+        ret = callback(*args, **kwargs)
+    except CallbackError as e:
+        title = "Error"
+        msg = str(e)
+        box = QMessageBox.critical
+    except CallbackWarning as e:
+        title = "Warning"
+        msg = str(e)
+        box = QMessageBox.warning
+    except Exception as e:
+        title = "Fatal"
+        msg = repr(e)
+        box = QMessageBox.critical
+    if title is not None:
+        box(widget, title, msg, QMessageBox.Ok)
+    return ret
 
 # Mypy ignores are set, due to mypy is unable to determine dynamic
 # base classes. See https://github.com/python/mypy/issues/2477
@@ -59,7 +83,8 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
         for j, attr_str in enumerate(self._annotations.keys()):
             item = getattr(entry, attr_str)
             if self._get_expense_attr_allowed is not None:
-                possible_vals = self._get_expense_attr_allowed(attr_str)
+                possible_vals = call_callback(self, self._get_expense_attr_allowed,
+                                              attr_str)
                 if len(possible_vals) > 0:
                     prev_widget = self.cellWidget(position, j)
                     if isinstance(prev_widget, QComboBox):
@@ -126,21 +151,22 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
                 val = item.text()
             setattr(entry, field, val)
         if self._entry_edited is not None:
-            self._entry_edited(row, entry)
+            call_callback(self, self._entry_edited, row, entry)
 
     def _want_add(self) -> None:
         if self._entry_add is not None:
-            self._entry_add()
+            call_callback(self, self._entry_add)
 
     def _want_delete(self) -> None:
         if self._entries_delete is not None:
-            self._entries_delete([self.currentRow()])
+            call_callback(self, self._entries_delete, [self.currentRow()])
 
 
 class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
                           metaclass=EntriesTableWidgetMeta):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(ExpenseEntry, *args, **kwargs)
+
 
 class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
                         metaclass=EntriesTableWidgetMeta):
