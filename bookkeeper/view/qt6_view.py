@@ -5,41 +5,43 @@ from inspect import get_annotations
 from typing import Callable, Any
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QMenu
 from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QKeyEvent, QContextMenuEvent
 
-from bookkeeper.view.abstract_view import ExpenseEntry, AbstractExpenses
+from bookkeeper.view.abstract_view import T, AbstractEntries, ExpenseEntry, BudgetEntry
 
 
 # Mypy ignores are set, due to mypy is unable to determine dynamic
 # base classes. See https://github.com/python/mypy/issues/2477
-class ExpensesTableWidgetMeta(type(AbstractExpenses),  # type: ignore[misc]
+class EntriesTableWidgetMeta(type(AbstractEntries),  # type: ignore[misc]
                               type(QTableWidget)):     # type: ignore[misc]
     """
     Metaclass for correct inheritance of ExpensesTableWidget from AbstractExpenses.
     """
 
 
-class ExpensesTableWidget(QTableWidget, AbstractExpenses,
-                          metaclass=ExpensesTableWidgetMeta):
+class EntriesTableWidget(QTableWidget, AbstractEntries[T],
+                          metaclass=EntriesTableWidgetMeta):
     """
     Editable expenses table widget
     """
 
     _annotations: dict[str, type]
+    _cls: type[T]
 
-    _entry_edited: Callable[[int, ExpenseEntry], None] | None = None
+    _entry_edited: Callable[[int, T], None] | None = None
     _entries_delete: Callable[[list[int]], None] | None = None
     _get_expense_attr_allowed: Callable[[str], list[str]] | None = None
     _entry_add: Callable[[], None] | None = None
 
     _context_menu: QMenu
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, cls: type[T], *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._annotations = get_annotations(ExpenseEntry, eval_str=True)
-
+        self._annotations = get_annotations(cls, eval_str=True)
+        self._cls = cls
         self.setColumnCount(len(self._annotations))
         self.setHorizontalHeaderLabels(
-            [ExpenseEntry.__dict__[name] for name in self._annotations.keys()])
+            [cls.__dict__[name] for name in self._annotations.keys()])
         header = self.horizontalHeader()
         for i in range(len(self._annotations)):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
@@ -51,7 +53,7 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
 
         self._context_menu = QMenu(self)
 
-    def set_at_position(self, position: int, entry: ExpenseEntry) -> None:
+    def set_at_position(self, position: int, entry: T) -> None:
         # setting item is not editing. Editing comes from user
         self.cellChanged.disconnect(self._cell_changed)
         for j, attr_str in enumerate(self._annotations.keys()):
@@ -74,13 +76,13 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
             self.setItem(position, j, qitem)
         self.cellChanged.connect(self._cell_changed)
 
-    def set_contents(self, entries: list[ExpenseEntry]) -> None:
+    def set_contents(self, entries: list[T]) -> None:
         self.setRowCount(len(entries))
         for row, entry in enumerate(entries):
             self.set_at_position(row, entry)
 
     def connect_edited(self,
-                       callback: Callable[[int, ExpenseEntry], None]) -> None:
+                       callback: Callable[[int, T], None]) -> None:
         self._entry_edited = callback
 
     def connect_delete(self,
@@ -99,13 +101,13 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
         add_act = self._context_menu.addAction("Add")
         add_act.triggered.connect(self._want_add)
 
-    def keyPressEvent(self, event: QEvent) -> None:
-        if event.key() == Qt.Key_Delete:
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key_Delete:  # type: ignore[attr-defined]
             self._want_delete()
             return
         super().keyPressEvent(event)
 
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         self._context_menu.exec(event.globalPos())
 
     def _qbox_changed(self, newtext: str) -> None:
@@ -114,7 +116,7 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
     def _cell_changed(self, row: int, column: int) -> None:
         if self._entry_edited is None:
             return
-        entry = ExpenseEntry()
+        entry = self._cls()
         for i, field in enumerate(self._annotations.keys()):
             item = self.item(row, i)
             if item is None:
@@ -133,3 +135,14 @@ class ExpensesTableWidget(QTableWidget, AbstractExpenses,
     def _want_delete(self) -> None:
         if self._entries_delete is not None:
             self._entries_delete([self.currentRow()])
+
+
+class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
+                          metaclass=EntriesTableWidgetMeta):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(ExpenseEntry, *args, **kwargs)
+
+class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
+                        metaclass=EntriesTableWidgetMeta):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(BudgetEntry, *args, **kwargs)

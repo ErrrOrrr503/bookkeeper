@@ -9,7 +9,7 @@ from pytestqt.qt_compat import qt_api
 from PySide6.QtCore import Qt
 
 class TestExpenses:
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def expenses_list(self):
         return [
             ExpenseEntry(str(datetime.now()), '666.13', 'Souls', 'soul purchase'),
@@ -91,7 +91,7 @@ class TestExpenses:
         widget.set_contents(expenses_list)
         qtbot.addWidget(widget)
         widget.show()
-        #qtbot.stop()
-        #widget.setCurrentCell(0, 0)
-        #qtbot.keyClick(widget, Qt.Key_Delete)
-        #expense_delete_callback.assert_called_with([0])
+        qtbot.stop()
+        widget.setCurrentCell(0, 0)
+        qtbot.keyClick(widget, Qt.Key_Delete)
+        expense_delete_callback.assert_called_with([0])
