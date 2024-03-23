@@ -132,3 +132,26 @@ class TestBudgets:
         qtbot.addWidget(widget)
         widget.show()
         #qtbot.stop()
+
+class TestExpensesAdder():
+    @staticmethod
+    def get_attr_allowed(attr_str):
+        if attr_str == 'category':
+            return [ 'All', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
+        return []
+
+    @staticmethod
+    def get_default_entry():
+        return ExpenseEntry('1970-01-01', '0', 'All', 'comment')
+
+    def test_can_create(self, qtbot):
+        expense_add_callback = Mock()
+        widget = ExpensesTableWidget()
+        widget.connect_get_attr_allowed(self.get_attr_allowed)
+        widget.connect_get_default_entry(self.get_default_entry)
+        widget.connect_add(expense_add_callback)
+        adder = widget.expenses_adder_widget()
+        qtbot.addWidget(adder)
+        adder.show()
+        qtbot.stop()
+        expense_add_callback.assert_called_once_with(self.get_default_entry())

@@ -39,7 +39,12 @@ class BudgetEntry():
     spent: str = "Spent"
     category: str = "Category"
 
-T = TypeVar('T', ExpenseEntry, BudgetEntry)
+@dataclass
+class CategoryEntry():
+    name: str = "Name"
+    parent: str = "Parent"
+
+T = TypeVar('T', ExpenseEntry, BudgetEntry, CategoryEntry)
 
 class AbstractEntries(ABC, Generic[T]):
     """
@@ -75,9 +80,16 @@ class AbstractEntries(ABC, Generic[T]):
 
     @abstractmethod
     def connect_add(self,
-                    callback: Callable[[], None]) -> None:
+                    callback: Callable[[T], None]) -> None:
         """
         Register callback on "want to add entry".
+        """
+
+    @abstractmethod
+    def connect_get_default_entry(self,
+                                  callback: Callable[[], T]) -> None:
+        """
+        Register callback that returns default entry in currect env.
         """
 
     @abstractmethod

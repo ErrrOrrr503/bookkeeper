@@ -14,8 +14,9 @@ def test_expenses_can_create_subclass():
         def set_at_position(self, position: int, entry: T) -> None: pass
         def connect_edited(self, callback: Callable[[int, T], None]) -> None: pass
         def connect_delete(self, callback: Callable[[list[int]], None]) -> None: pass
-        def connect_add(self, callback: Callable[[], None]) -> None: pass
+        def connect_add(self, callback: Callable[[T], None]) -> None: pass
         def connect_get_attr_allowed(self, callback: Callable[[str], list[str]]) -> None: pass
+        def connect_get_default_entry(self, callback: Callable[[], T]) -> None: pass
 
     t = Test()
     assert isinstance(t, AbstractEntries)
