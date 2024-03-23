@@ -3,9 +3,10 @@ Pyside6 view implementation.
 """
 from inspect import get_annotations
 from typing import Callable, Any, Tuple
+from functools import partial
 from PySide6.QtWidgets import QWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QMenu, QMessageBox, QGridLayout, QLineEdit, QLabel, QPushButton
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QKeyEvent, QContextMenuEvent
+from PySide6.QtGui import QKeyEvent, QContextMenuEvent, QPaintEvent
 
 from bookkeeper.view.abstract_view import T, AbstractEntries, ExpenseEntry, BudgetEntry, CallbackError, CallbackWarning
 
@@ -35,6 +36,57 @@ def call_callback(widget: QWidget, callback: Callable[..., Any] | None, *args: A
     if title is not None:
         box(widget, title, msg, QMessageBox.Ok)  # type: ignore[attr-defined]
     return ret, title
+
+def partial_none(func: Callable[..., Any] | None,
+                 /, *args: Any, **kwargs: Any) -> Callable[..., Any] | None:
+    if func is None:
+        return None
+    return partial(func, *args, **kwargs)
+
+
+class CallableWrapper():
+    """
+    Needed not to store <functions> as a class attribute.
+    Otherwise, when making instance of this class they become methods.
+    """
+    func: Callable[..., Any]
+
+    def __init__(self, func: Callable[..., Any]) -> None:
+        self.func = func
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.func(*args, **kwargs)
+
+
+class SelfUpdatableCombo(QComboBox):
+    get_contents: Callable[[], list[str]] | None
+    _prev_contents: list[str] = []
+
+    def __init__(self, callback: Callable[[], list[str]] | None, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.get_contents = callback
+        self.update_contents()
+
+    def update_contents(self) -> None:
+        possible_vals, err = call_callback(self, self.get_contents)
+        if err is not None:
+            possible_vals = []
+        if possible_vals != self._prev_contents:
+            old_text = self.currentText()
+            self.clear()
+            self.addItems(possible_vals)
+            self.set_content(old_text)
+            self._prev_contents = possible_vals
+
+    def set_content(self, content_text: str) -> None:
+        index = self.findText(content_text)
+        if index >= 0:
+            self.setCurrentIndex(index)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        self.update_contents()
+        super().paintEvent(event)
+
 
 # Mypy ignores are set, due to mypy is unable to determine dynamic
 # base classes. See https://github.com/python/mypy/issues/2477
@@ -93,11 +145,9 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
                 prev_widget = self.cellWidget(position, j)
                 if isinstance(prev_widget, QComboBox):
                     prev_widget.currentTextChanged.disconnect(self._qbox_changed)
-                qcombo = QComboBox()
-                qcombo.addItems(possible_vals)
-                index = qcombo.findText(item)
-                if index >= 0:
-                    qcombo.setCurrentIndex(index)
+                get_allowed = partial_none(self._get_entry_attr_allowed, attr_str)
+                qcombo = SelfUpdatableCombo(get_allowed)
+                qcombo.set_content(item)
                 self.setCellWidget(position, j, qcombo)
                 qcombo.currentTextChanged.connect(self._qbox_changed)
                 continue
@@ -169,18 +219,6 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
     def _want_delete(self) -> None:
         call_callback(self, self._entries_delete, [self.currentRow()])
 
-class CallableWrapper():
-    """
-    Needed not to store <functions> as a class attribute.
-    Otherwise, when making instance of this class they become methods.
-    """
-    func: Callable[..., Any]
-
-    def __init__(self, func: Callable[..., Any]) -> None:
-        self.func = func
-
-    def __call__(self, *args, **kwargs) -> Any:
-        return self.func(*args, **kwargs)
 
 class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
                           metaclass=EntriesTableWidgetMeta):
@@ -194,6 +232,7 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
         entry_add: Callable[..., Any] | None = None
         get_default_entry: Callable[..., Any] | None = None
         get_entry_attr_allowed: Callable[..., Any] | None = None
+        edit_categories: Callable[..., Any] | None = None
         _entry: ExpenseEntry
         def __init__(self, *args: Any, **kwargs: Any):
             super().__init__(*args, **kwargs)
@@ -207,15 +246,9 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
             layout.addWidget(QLabel('Cost', self), 0, 0)
             layout.addWidget(cost_widget, 0, 1)
 
-            category_widget = QComboBox(self)
-            possible_vals, err = call_callback(self, self.get_entry_attr_allowed,
-                                              'category')
-            if err is not None:
-                possible_vals = []
-            category_widget.addItems(possible_vals)
-            index = category_widget.findText(self._entry.category)
-            if index >= 0:
-                category_widget.setCurrentIndex(index)
+            get_attr_allowed = partial_none(self.get_entry_attr_allowed, 'category')
+            category_widget = SelfUpdatableCombo(get_attr_allowed, self)
+            category_widget.set_content(self._entry.category)
             category_widget.currentTextChanged.connect(self._category_changed)
             layout.addWidget(QLabel('Category', self), 1, 0)
             layout.addWidget(category_widget, 1, 1)
@@ -223,6 +256,11 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
             add_button_widget = QPushButton('Add', self)
             add_button_widget.clicked.connect(self.want_add)
             layout.addWidget(add_button_widget, 2, 1)
+
+            edit_cat_button_widget = QPushButton('Edit', self)
+            if self.edit_categories is not None:
+                edit_cat_button_widget.clicked.connect(self.edit_categories)
+            layout.addWidget(edit_cat_button_widget, 1, 2)
 
             self.setLayout(layout)
 
@@ -236,7 +274,7 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
             call_callback(self, self.entry_add, self._entry)
 
 
-    expenses_adder_widget: _ExpensesAdderWidget
+    expenses_adder_widget: type[_ExpensesAdderWidget]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(ExpenseEntry, *args, **kwargs)
@@ -257,6 +295,9 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
                     callback: Callable[[ExpenseEntry], None]) -> None:
         super().connect_add(callback)
         self.expenses_adder_widget.entry_add = CallableWrapper(callback)
+
+    def connect_edit_categories(self, callback: Callable[[QWidget | None], None]) -> None:
+        self.expenses_adder_widget.edit_categories = CallableWrapper(callback)
 
 
 class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
