@@ -1,5 +1,6 @@
-from bookkeeper.view.abstract_view import ExpenseEntry, BudgetEntry
-from bookkeeper.view.qt6_view import ExpensesTableWidget, BudgetTableWidget
+from bookkeeper.view.abstract_view import ExpenseEntry, BudgetEntry, CategoryEntry
+from bookkeeper.view.qt6_view import ExpensesTableWidget, BudgetTableWidget, CategoriesWidget
+from bookkeeper.utils import read_tree
 
 from datetime import datetime
 
@@ -114,15 +115,15 @@ class TestBudgets:
     @pytest.fixture
     def budgets_list(self):
         return [
-            BudgetEntry("Day", "146", "100", "All"),
-            BudgetEntry("Week", "146", "100", "All"),
+            BudgetEntry("Day", "146", "100", "-"),
+            BudgetEntry("Week", "146", "100", "-"),
             BudgetEntry("Month", "146", "100", "Souls")
         ]
 
     @staticmethod
     def get_attr_allowed(attr_str):
         if attr_str == 'category':
-            return [ 'All', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
+            return [ '-', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
         return []
 
     def test_can_create(self, qtbot, budgets_list):
@@ -130,21 +131,20 @@ class TestBudgets:
         widget.connect_get_attr_allowed(self.get_attr_allowed)
         widget.set_contents(budgets_list)
         qtbot.addWidget(widget)
-        widget.show()
-        #qtbot.stop()
+        #widget.show()
 
-class TestExpensesAdder():
+class TestExpensesAdder:
     @staticmethod
     def get_attr_allowed(attr_str):
         if attr_str == 'category':
-            return [ 'All', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
+            return [ '-', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
         return []
 
     @staticmethod
     def get_default_entry():
-        return ExpenseEntry('1970-01-01', '0', 'All', 'comment')
+        return ExpenseEntry('1970-01-01', '0', '-', 'comment')
 
-    def test_can_create(self, qtbot):
+    def test_can_add(self, qtbot):
         expense_add_callback = Mock()
         widget = ExpensesTableWidget()
         widget.connect_get_attr_allowed(self.get_attr_allowed)
@@ -153,5 +153,49 @@ class TestExpensesAdder():
         adder = widget.expenses_adder_widget()
         qtbot.addWidget(adder)
         adder.show()
-        qtbot.stop()
+        qtbot.mouseClick(
+            adder.add_button_widget,
+            qt_api.QtCore.Qt.MouseButton.LeftButton
+        )
         expense_add_callback.assert_called_once_with(self.get_default_entry())
+
+
+class TestCategoriesWidget:
+    @staticmethod
+    def get_attr_allowed(attr_str):
+        if attr_str == 'category':
+            return [ '-', 'Souls', 'Tests', 'Drugs', 'Rock\'n\'Roll']
+        return []
+
+    @staticmethod
+    def get_default_entry():
+        return CategoryEntry('new category', '-')
+
+    @pytest.fixture
+    def categories_sorted_list(self):
+        cats = """
+foodstuff
+    meat
+        raw meat
+        meat products
+    candies
+books
+clothing
+        """.splitlines()
+        entries = [ CategoryEntry(t[0], t[1] if t[1] is not None else '-') for t in read_tree(cats) ]
+        return entries
+
+    def test_can_add(self, qtbot, categories_sorted_list):
+        category_add_callback = Mock()
+        widget = CategoriesWidget()
+        widget.set_contents(categories_sorted_list)
+        widget.connect_get_attr_allowed(self.get_attr_allowed)
+        widget.connect_get_default_entry(self.get_default_entry)
+        widget.connect_add(category_add_callback)
+        qtbot.addWidget(widget)
+        widget.show()
+        qtbot.mouseClick(
+            widget.adder.add_button_widget,
+            qt_api.QtCore.Qt.MouseButton.LeftButton
+        )
+        category_add_callback.assert_called_once_with(self.get_default_entry())

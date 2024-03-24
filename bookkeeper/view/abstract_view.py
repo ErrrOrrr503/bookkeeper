@@ -41,14 +41,16 @@ class BudgetEntry():
 
 @dataclass
 class CategoryEntry():
-    name: str = "Name"
-    parent: str = "Parent"
+    category: str = "Category name"
+    parent: str = "Parent category"
 
 T = TypeVar('T', ExpenseEntry, BudgetEntry, CategoryEntry)
 
 class AbstractEntries(ABC, Generic[T]):
     """
     Abstract expenses list viewer, i.e. table widget
+    Methods that raise NotImplementedError are optional,
+    but can be used for optimization.
     """
     @abstractmethod
     def set_contents(self, entries: list[T]) -> None:
@@ -59,7 +61,7 @@ class AbstractEntries(ABC, Generic[T]):
     @abstractmethod
     def set_at_position(self, position: int, entry: T) -> None:
         """
-        Set an entry at specified position in the table/list/other representation
+        Set an entry at existing position in the table/list/other representation
         """
 
     @abstractmethod
