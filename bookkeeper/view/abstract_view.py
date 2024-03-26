@@ -102,3 +102,28 @@ class AbstractEntries(ABC, Generic[T]):
         ExpenseEntry's attribute can take only specific values.
         This enables view to make optimizations, i.e. dropdowns
         """
+
+
+class AbstractView(ABC):
+    """
+    View abstract class.
+    Unites AbstractEntries for expenses, budgets and categories
+    """
+    @property
+    @abstractmethod
+    def expenses(self) -> AbstractEntries[ExpenseEntry]:
+        pass
+
+    @property
+    @abstractmethod
+    def budgets(self) -> AbstractEntries[BudgetEntry]:
+        pass
+
+    @property
+    @abstractmethod
+    def categories(self) -> AbstractEntries[CategoryEntry]:
+        pass
+
+    @abstractmethod
+    def start(self):
+        """ Start the gui and event loop """

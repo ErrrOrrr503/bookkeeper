@@ -1,14 +1,20 @@
 """
 Pyside6 view implementation.
 """
+import sys
 from inspect import get_annotations
 from typing import Callable, Any, Tuple
 from functools import partial
-from PySide6.QtWidgets import QWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QMenu, QMessageBox, QGridLayout, QHBoxLayout, QVBoxLayout, QLineEdit, QLabel, QPushButton, QTreeWidget, QTreeWidgetItem
+from PySide6.QtWidgets import (QWidget, QTableWidget, QTableWidgetItem, QHeaderView,
+                               QComboBox, QMenu, QMessageBox, QGridLayout, QHBoxLayout,
+                               QVBoxLayout, QLineEdit, QLabel, QPushButton, QTreeWidget,
+                               QTreeWidgetItem, QApplication, QMainWindow)
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent, QContextMenuEvent, QPaintEvent, QShowEvent
 
-from bookkeeper.view.abstract_view import T, AbstractEntries, ExpenseEntry, BudgetEntry, CallbackError, CallbackWarning, CategoryEntry
+from bookkeeper.view.abstract_view import (T, AbstractEntries, ExpenseEntry,
+                                           BudgetEntry, CallbackError, CallbackWarning,
+                                           CategoryEntry, AbstractView)
 
 
 def call_callback(widget: QWidget, callback: Callable[..., Any] | None, *args: Any, **kwargs: Any) -> Tuple[Any, str | None]:
@@ -51,7 +57,7 @@ class CallableWrapper():
     """
     func: Callable[..., Any]
 
-    def __init__(self, func: Callable[..., Any]) -> None:
+    def __init__(self, func: Callable[..., Any]):
         self.func = func
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -62,7 +68,7 @@ class SelfUpdatableCombo(QComboBox):
     get_contents: Callable[[], list[str]] | None
     _prev_contents: list[str] = []
 
-    def __init__(self, callback: Callable[[], list[str]] | None, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, callback: Callable[[], list[str]] | None, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.get_contents = callback
         self.update_contents()
@@ -114,7 +120,7 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
 
     _context_menu: QMenu
 
-    def __init__(self, cls: type[T], *args: Any, **kwargs: Any) -> None:
+    def __init__(self, cls: type[T], *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.annotations = get_annotations(cls, eval_str=True)
         self._cls = cls
@@ -280,7 +286,7 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
 
     expenses_adder_widget: type[_ExpensesAdderWidget]
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(ExpenseEntry, *args, **kwargs)
         # make inner class per-object
         self.expenses_adder_widget = self._ExpensesAdderWidget
@@ -309,7 +315,7 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
 
 class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
                         metaclass=EntriesTableWidgetMeta):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(BudgetEntry, *args, **kwargs)
 
     def set_at_position(self, position: int, entry: BudgetEntry) -> None:
@@ -328,14 +334,14 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
 
 # Mypy ignores are set, due to mypy is unable to determine dynamic
 # base classes. See https://github.com/python/mypy/issues/2477
-class CategoriesWidgetMeta(type(AbstractEntries),  # type: ignore[misc]
+class EntriesWidgetMeta(type(AbstractEntries),  # type: ignore[misc]
                            type(QWidget)):     # type: ignore[misc]
     """
     Metaclass for correct inheritance of ExpensesTableWidget from AbstractExpenses.
     """
 
 class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
-                       metaclass=CategoriesWidgetMeta):
+                       metaclass=EntriesWidgetMeta):
     """ categories tree view and editing """
 
     class _CategoryAdderWidget(QWidget):
@@ -479,3 +485,51 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
         if parent is not None:
             entry.parent = parent.text(0)
         call_callback(self, self._entry_edited, pos, entry)
+
+
+#### Qt6 View ####
+
+
+class Qt6View(AbstractView):
+    """
+    Qt6 view implementation.
+    """
+    _expenses_widget: ExpensesTableWidget
+    _budgets_widget: BudgetTableWidget
+    _categories_widget: CategoriesWidget
+
+    def __init__(self):
+        self.window = QMainWindow()
+        self.central_widget = QWidget(self.window)
+        self.central_layout = QVBoxLayout()
+
+        self.central_layout.addWidget(QLabel("Expenses", self.central_widget))
+        self._expenses_widget = ExpensesTableWidget(self.central_widget)
+        self.central_layout.addWidget(self._expenses_widget)
+
+        self.central_layout.addWidget(QLabel("Budgets", self.central_widget))
+        self._budgets_widget = BudgetTableWidget(self.central_widget)
+        self.central_layout.addWidget(self._budgets_widget)
+
+        self.expenses_adder = self.expenses.expenses_adder_widget(self.central_widget)
+        self.central_layout.addWidget(self.expenses_adder)
+
+        self.central_widget.setLayout(self.central_layout)
+        self.window.setCentralWidget(self.central_widget)
+
+    def start(self) -> None:
+        self.app = QApplication(sys.argv)
+        self.window.show()
+        self.app.exec()
+
+    @property
+    def expenses(self) -> ExpensesTableWidget:
+        return self._expenses_widget
+
+    @property
+    def budgets(self) -> BudgetTableWidget:
+        return self._budgets_widget
+
+    @property
+    def categories(self) -> CategoriesWidget:
+        return self._categories_widget
