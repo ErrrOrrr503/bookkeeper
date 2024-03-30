@@ -76,6 +76,14 @@ class Category:
         yield parent
         yield from parent.get_all_parents(repo)
 
+    @staticmethod
+    def _get_children(graph: dict[int | None, list['Category']],
+                     root: int | None) -> Iterator['Category']:
+        """ dfs in graph from root """
+        for subcat in graph[root]:
+            yield subcat
+            yield from Category._get_children(graph, subcat.pk)
+
     def get_subcategories(self,
                           repo: AbstractRepository['Category']
                           ) -> Iterator['Category']:
@@ -94,17 +102,19 @@ class Category:
         of different level lower than this.
         """
 
-        def get_children(graph: dict[int | None, list['Category']],
-                         root: int) -> Iterator['Category']:
-            """ dfs in graph from root """
-            for subcat in graph[root]:
-                yield subcat
-                yield from get_children(graph, subcat.pk)
-
         subcats = defaultdict(list)
         for cat in repo.get_all():
             subcats[cat.parent].append(cat)
-        return get_children(subcats, self.pk)
+        return self._get_children(subcats, self.pk)
+
+    @classmethod
+    def get_all_categories_sorted(
+            cls,
+            repo: AbstractRepository['Category']) -> Iterator['Category']:
+        subcats = defaultdict(list)
+        for cat in repo.get_all():
+            subcats[cat.parent].append(cat)
+        return cls._get_children(subcats, None)
 
     @classmethod
     def create_from_tree(

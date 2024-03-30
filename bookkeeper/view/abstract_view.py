@@ -6,10 +6,10 @@ from typing import Callable, Generic, TypeVar
 from dataclasses import dataclass
 
 
-class CallbackError(Exception):
+class ViewError(Exception):
     """ Some exception with clear error string that view can handle. """
 
-class CallbackWarning(Exception):
+class ViewWarning(Exception):
     """ Some exception with clear error string that view can handle. """
 
 # TODO: translation

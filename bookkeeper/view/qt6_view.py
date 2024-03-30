@@ -12,8 +12,10 @@ from PySide6.QtWidgets import (QWidget, QTableWidget, QTableWidgetItem, QHeaderV
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent, QContextMenuEvent, QPaintEvent, QShowEvent
 
+from bookkeeper.config import constants
+
 from bookkeeper.view.abstract_view import (T, AbstractEntries, ExpenseEntry,
-                                           BudgetEntry, CallbackError, CallbackWarning,
+                                           BudgetEntry, ViewError, ViewWarning,
                                            CategoryEntry, AbstractView)
 
 
@@ -27,11 +29,11 @@ def call_callback(widget: QWidget, callback: Callable[..., Any] | None, *args: A
     box: Callable[..., Any]
     try:
         ret = callback(*args, **kwargs)
-    except CallbackError as e:
+    except ViewError as e:
         title = 'Error'
         msg = str(e)
         box = QMessageBox.critical
-    except CallbackWarning as e:
+    except ViewWarning as e:
         title = 'Warning'
         msg = str(e)
         box = QMessageBox.warning
@@ -306,7 +308,8 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
         super().connect_add(callback)
         self.expenses_adder_widget.entry_add = CallableWrapper(callback)
 
-    def connect_edit_categories(self, callback: Callable[[QWidget | None], None]) -> None:
+    def connect_edit_categories(self, callback: Callable[[None], None]) -> None:
+        """ callback shall display categories widget """
         self.expenses_adder_widget.edit_categories = CallableWrapper(callback)
 
 
@@ -480,7 +483,7 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
         pos = self._item_to_position[item]
         entry = CategoryEntry()
         entry.category = item.text(0)
-        entry.parent = '-'
+        entry.parent = constants.TOP_CATEGORY_NAME
         parent = item.parent()
         if parent is not None:
             entry.parent = parent.text(0)
@@ -503,6 +506,8 @@ class Qt6View(AbstractView):
         self.central_widget = QWidget(self.window)
         self.central_layout = QVBoxLayout()
 
+        self._categories_widget = CategoriesWidget()
+
         self.central_layout.addWidget(QLabel("Expenses", self.central_widget))
         self._expenses_widget = ExpensesTableWidget(self.central_widget)
         self.central_layout.addWidget(self._expenses_widget)
@@ -512,6 +517,7 @@ class Qt6View(AbstractView):
         self.central_layout.addWidget(self._budgets_widget)
 
         self.expenses_adder = self.expenses.expenses_adder_widget(self.central_widget)
+        self._expenses_widget.connect_edit_categories(self._show_categories_widget)
         self.central_layout.addWidget(self.expenses_adder)
 
         self.central_widget.setLayout(self.central_layout)
@@ -533,3 +539,6 @@ class Qt6View(AbstractView):
     @property
     def categories(self) -> CategoriesWidget:
         return self._categories_widget
+
+    def _show_categories_widget(self):
+        self._categories_widget.show()
