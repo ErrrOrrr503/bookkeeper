@@ -181,7 +181,7 @@ class SqliteRepository(AbstractRepository[T]):
         if (self._fields[attr_str] in (datetime, datetime | None)
                 and isinstance(value, str)):
             setattr(obj, attr_str,
-                    datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f'))
+                    datetime.fromisoformat(value))
         elif (self._fields[attr_str] in (timedelta, timedelta | None)
               and isinstance(value, str)):
             d_s_us = value.split()
@@ -222,7 +222,7 @@ class SqliteRepository(AbstractRepository[T]):
               con as con,
               closing(con.cursor()) as cur):
             cur.execute(
-                f'SELECT {self._names} FROM {self._table_name} WHERE pk={pk}'
+                f'SELECT {self._names}, pk FROM {self._table_name} WHERE pk={pk}'
             )
             rows = cur.fetchall()
             # len(rows) is 0 or 1, as pk is unique
@@ -231,6 +231,7 @@ class SqliteRepository(AbstractRepository[T]):
                 attr_values = iter(rows[0])
                 for attr_str in self._fields.keys():
                     self._sql_typed_setattr(obj, attr_str, next(attr_values))
+                setattr(obj, 'pk', next(attr_values))
         return obj
 
     def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
@@ -240,13 +241,13 @@ class SqliteRepository(AbstractRepository[T]):
               closing(con.cursor()) as cur):
             if where is not None:
                 cur.execute(
-                    f'SELECT {self._names} FROM {self._table_name}' +
+                    f'SELECT {self._names}, pk FROM {self._table_name}' +
                     ' WHERE ' + ' AND '.join([f'{name} = ?' for name in where.keys()]),
                     [self._type_to_sql_type(where[name]) for name in where.keys()]
                 )
             else:
                 cur.execute(
-                    f'SELECT {self._names} FROM {self._table_name}'
+                    f'SELECT {self._names}, pk FROM {self._table_name}'
                 )
             rows = cur.fetchall()
             # len(rows) is 0 or 1, as pk is unique
@@ -255,6 +256,7 @@ class SqliteRepository(AbstractRepository[T]):
                 attr_values = iter(row)
                 for attr_str in self._fields.keys():
                     self._sql_typed_setattr(obj, attr_str, next(attr_values))
+                setattr(obj, 'pk', next(attr_values))
                 ret_list.append(obj)
         return ret_list
 
