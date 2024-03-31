@@ -189,12 +189,19 @@ class TestCategoriesWidget:
 
 class TestQt6View:
 
-    def test_can_create(self, qtbot, expenses_list, budgets_list):
+    @staticmethod
+    def monkey_create_qapp(obj): ...
+
+    def test_can_create(self, qtbot, monkeypatch, expenses_list, budgets_list, categories_sorted_list):
+        monkeypatch.setattr(Qt6View, "_create_qapp", self.monkey_create_qapp)
         view = Qt6View()
         view.expenses.connect_get_attr_allowed(get_attr_allowed)
         view.expenses.set_contents(expenses_list)
+        view.expenses.connect_get_default_entry(get_default_expense)
         view.budgets.connect_get_attr_allowed(get_attr_allowed)
         view.budgets.set_contents(budgets_list)
-        view.expenses.connect_get_default_entry(get_default_expense)
+        view.categories.connect_get_attr_allowed(get_attr_allowed)
+        view.categories.set_contents(categories_sorted_list)
+        view.categories.connect_get_default_entry(get_default_category)
         view.window.show()
         qtbot.stop()

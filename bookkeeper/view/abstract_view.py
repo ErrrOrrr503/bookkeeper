@@ -125,5 +125,5 @@ class AbstractView(ABC):
         pass
 
     @abstractmethod
-    def start(self):
+    def start(self) -> None:
         """ Start the gui and event loop """
