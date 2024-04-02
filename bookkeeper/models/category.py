@@ -31,7 +31,7 @@ class Category:
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, type(self)):
-            return NotImplemented
+            raise NotImplementedError
         return self.name == other.name and self.parent == other.parent
 
     def get_parent(self,

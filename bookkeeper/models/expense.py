@@ -38,7 +38,7 @@ class Expense:
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, type(self)):
-            return NotImplemented
+            raise NotImplementedError
         return (self.cost == other.cost
                 and self.category == other.category
                 and self.expense_date == other.expense_date

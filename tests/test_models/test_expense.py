@@ -28,3 +28,12 @@ def test_can_add_to_repo(repo):
     e = Expense(100, 1)
     pk = repo.add(e)
     assert e.pk == pk
+
+def test_eq():
+    e1 = Expense(cost=100, category=1, expense_date=datetime(1970, 1, 1),
+                 added_date=datetime(1970, 1, 1), comment='test', pk=1)
+    e2 = Expense(cost=100, category=1, expense_date=datetime(1970, 1, 1),
+                 added_date=datetime(1970, 1, 1), comment='test', pk=2)
+    assert e1 == e2
+    with pytest.raises(NotImplementedError):
+        e1 == 42

@@ -49,7 +49,7 @@ class Budget:
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, type(self)):
-            return NotImplemented
+            raise NotImplementedError
         return (self.cost_limit == other.cost_limit
                 and self.end == other.end
                 and self.start == other.start

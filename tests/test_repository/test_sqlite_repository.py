@@ -140,6 +140,7 @@ def test_crud_new_db(tmp_path, custom_class, request):
     obj1.integer = 641
     repo.update(obj1)
     assert repo.get(pk) == obj1
+    assert repo.get(pk).pk == obj.pk
     repo.delete(pk)
     assert repo.get(pk) is None
 

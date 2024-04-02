@@ -1,14 +1,16 @@
-from bookkeeper.view.abstract_view import ExpenseEntry, BudgetEntry, CategoryEntry
-from bookkeeper.view.qt6_view import ExpensesTableWidget, BudgetTableWidget, CategoriesWidget, Qt6View
+from bookkeeper.view.abstract_view import ExpenseEntry, BudgetEntry, CategoryEntry, ViewError, ViewWarning
+from bookkeeper.view.qt6_view import ExpensesTableWidget, BudgetTableWidget, CategoriesWidget, Qt6View, call_callback, partial_none, SelfUpdatableCombo
 from bookkeeper.utils import read_tree
+from bookkeeper.config import constants
 
 from datetime import datetime
+from functools import partial
 
 import pytest
 from mock import Mock
 from pytestqt.qt_compat import qt_api
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QWidget, QMessageBox
 
 @pytest.fixture
 def expenses_list():
@@ -51,6 +53,72 @@ def get_default_category():
 def get_default_expense():
     return ExpenseEntry('1970-01-01', '0', '-', 'comment')
 
+class TestMisc:
+
+    def test_call_callback(self, qtbot):
+        callback = Mock(return_value=None)
+        widget = QWidget()
+        assert call_callback(widget, None) == (None, 'NoneCallback')
+        assert call_callback(widget, callback, 1, b=2) == (None, None)
+        callback.assert_called_once_with(1, b=2)
+
+    def test_call_callback_err(self, qtbot, monkeypatch):
+
+        def callback_warn():
+            raise ViewWarning('Warning')
+
+        def callback_err():
+            raise ViewError('Error')
+
+        def callback_fatal():
+            raise Exception('Fatal')
+
+        monkeypatch.setattr(QMessageBox, 'critical', lambda *args: QMessageBox.Yes)
+        monkeypatch.setattr(QMessageBox, 'warning', lambda *args: QMessageBox.Yes)
+
+        widget = QWidget()
+
+        assert call_callback(widget, callback_warn) == (None, 'Warning')
+        assert call_callback(widget, callback_err) == (None, 'Error')
+        assert call_callback(widget, callback_fatal) == (None, 'Fatal')
+
+    def test_partial_none(self):
+        f = Mock(return_value=None)
+        assert partial_none(None) == None
+        p = partial_none(f, 1, b=2)
+        p(c=3)
+        f.assert_called_once_with(1, b=2, c=3)
+
+class TestSetfUpdatableCombo:
+    """
+    Unfortunately, qtbot clicking does not generate paintEvent.
+    And it seems, qtbot can't fake Wheel.
+    """
+    def entries_1(self):
+        return ['1', '2', '3']
+
+    def entries_2(self):
+        return ['4', '5', '6']
+
+    def test_can_create(self):
+        c = SelfUpdatableCombo(self.entries_1)
+        c.show()
+
+    def test_text_changed_callbacks(self, qtbot):
+        c = SelfUpdatableCombo(self.entries_1)
+        cb = Mock()
+        c.connect_text_changed(cb)
+        assert c._receivers == [ cb ]
+        c.disconnect_text_changed(cb)
+        assert c._receivers == []
+        c.connect_text_changed(cb)
+        c.set_content('3')
+        cb.assert_called_once_with('3')
+        c.get_contents = self.entries_2
+        c.update_contents()
+        cb.assert_called_once_with('3')  # no extra calls
+        assert c._receivers == [ cb ]
+
 
 class TestExpenses:
 
@@ -59,6 +127,18 @@ class TestExpenses:
         widget = ExpensesTableWidget()
         widget.connect_get_attr_allowed(get_attr_allowed)
         widget.connect_edited(expense_changed_callback)
+        widget.set_contents(expenses_list)
+        qtbot.addWidget(widget)
+        widget.show()
+
+    def test_bad_attr_allowed(self, qtbot, expenses_list, monkeypatch):
+
+        def bad_attr_allowed(*args, **kwargs):
+            raise ViewError
+
+        monkeypatch.setattr(QMessageBox, 'critical', lambda *args: QMessageBox.Yes)
+        widget = ExpensesTableWidget()
+        widget.connect_get_attr_allowed(bad_attr_allowed)
         widget.set_contents(expenses_list)
         qtbot.addWidget(widget)
         widget.show()
@@ -123,9 +203,9 @@ class TestExpenses:
         widget.set_contents(expenses_list)
         qtbot.addWidget(widget)
         widget.show()
-        #qtbot.stop()
         widget.setCurrentCell(0, 0)
-        qtbot.keyClick(widget, Qt.Key_Delete)
+        del_action = widget._context_menu.actions()[0]
+        del_action.trigger()
         expense_delete_callback.assert_called_with([0])
 
     def test_context_add_entry(self, qtbot, expenses_list):
@@ -138,18 +218,13 @@ class TestExpenses:
         widget.set_contents(expenses_list)
         qtbot.addWidget(widget)
         widget.show()
-        #qtbot.stop()
-        # TODO: autoclick
-        #expense_add_callback.assert_called()
+        add_action = widget._context_menu.actions()[1]
+        add_action.trigger()
+        expense_add_callback.assert_called_with(ExpenseEntry())
+        widget.connect_get_default_entry(get_default_expense)
+        add_action.trigger()
+        expense_add_callback.assert_called_with(get_default_expense())
 
-class TestBudgets:
-
-    def test_can_create(self, qtbot, budgets_list):
-        widget = BudgetTableWidget()
-        widget.connect_get_attr_allowed(get_attr_allowed)
-        widget.set_contents(budgets_list)
-        qtbot.addWidget(widget)
-        #widget.show()
 
 class TestExpensesAdder:
 
@@ -167,6 +242,32 @@ class TestExpensesAdder:
             qt_api.QtCore.Qt.MouseButton.LeftButton
         )
         expense_add_callback.assert_called_once_with(get_default_expense())
+
+    def test_can_edit_categories(self, qtbot):
+        expense_add_callback = Mock()
+        categories_edit_callback = Mock()
+        widget = ExpensesTableWidget()
+        widget.connect_get_attr_allowed(get_attr_allowed)
+        widget.connect_get_default_entry(get_default_expense)
+        widget.connect_add(expense_add_callback)
+        widget.connect_edit_categories(categories_edit_callback)
+        adder = widget.expenses_adder_widget()
+        qtbot.addWidget(adder)
+        adder.show()
+        qtbot.mouseClick(
+            adder.edit_cat_button_widget,
+            qt_api.QtCore.Qt.MouseButton.LeftButton
+        )
+        categories_edit_callback.assert_called_once()
+
+
+class TestBudgets:
+
+    def test_can_create(self, qtbot, budgets_list):
+        widget = BudgetTableWidget()
+        widget.connect_get_attr_allowed(get_attr_allowed)
+        widget.set_contents(budgets_list)
+        qtbot.addWidget(widget)
 
 
 class TestCategoriesWidget:
@@ -186,6 +287,43 @@ class TestCategoriesWidget:
         )
         category_add_callback.assert_called_once_with(get_default_category())
 
+    def test_can_delete(self, qtbot, categories_sorted_list):
+        category_delete_callback = Mock()
+        widget = CategoriesWidget()
+        widget.set_contents(categories_sorted_list)
+        widget.connect_get_attr_allowed(get_attr_allowed)
+        widget.connect_get_default_entry(get_default_category)
+        widget.connect_delete(category_delete_callback)
+        qtbot.addWidget(widget)
+        widget.show()
+        widget.tree.setCurrentItem(widget.tree.itemAt(0, 0))
+        qtbot.keyClick(widget, Qt.Key_Delete)
+        category_delete_callback.assert_called_with([0])
+
+    def test_edit(self, qtbot, categories_sorted_list):
+        category_edited_callback = Mock()
+        widget = CategoriesWidget()
+        widget.set_contents(categories_sorted_list)
+        widget.connect_get_attr_allowed(get_attr_allowed)
+        widget.connect_get_default_entry(get_default_category)
+        widget.connect_edited(category_edited_callback)
+        qtbot.addWidget(widget)
+        widget.show()
+        widget.tree.itemAt(0, 0).setText(0, 'edit')
+        category_edited_callback.assert_called_once_with(0, CategoryEntry('edit', constants.TOP_CATEGORY_NAME))
+
+    def test_set_at_position(self, qtbot, categories_sorted_list):
+        widget = CategoriesWidget()
+        widget.set_contents(categories_sorted_list)
+        widget.connect_get_attr_allowed(get_attr_allowed)
+        widget.connect_get_default_entry(get_default_category)
+        qtbot.addWidget(widget)
+        widget.show()
+        widget.set_at_position(0, CategoryEntry('setpos', '-'))
+        assert widget.tree.itemAt(0, 0).text(0) == 'setpos'
+        with pytest.raises(ValueError):
+            widget.set_at_position(146, CategoryEntry('setpos', '-'))
+
 
 class TestQt6View:
 
@@ -203,5 +341,5 @@ class TestQt6View:
         view.categories.connect_get_attr_allowed(get_attr_allowed)
         view.categories.set_contents(categories_sorted_list)
         view.categories.connect_get_default_entry(get_default_category)
+        qtbot.add_widget(view.window)
         view.window.show()
-        qtbot.stop()

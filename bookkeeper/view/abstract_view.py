@@ -112,18 +112,27 @@ class AbstractView(ABC):
     @property
     @abstractmethod
     def expenses(self) -> AbstractEntries[ExpenseEntry]:
-        pass
+        """
+        Expenses implementation property (or attribute)
+        in AbstractView implementation.
+        """
 
     @property
     @abstractmethod
     def budgets(self) -> AbstractEntries[BudgetEntry]:
-        pass
+        """
+        Budgets implementation property (or attribute)
+        in AbstractView implementation.
+        """
 
     @property
     @abstractmethod
     def categories(self) -> AbstractEntries[CategoryEntry]:
-        pass
+        """
+        Categories implementation property (or attribute)
+        in AbstractView implementation.
+        """
 
     @abstractmethod
     def start(self) -> None:
-        """ Start the gui and event loop """
+        """ Start the gui and the event loop. """

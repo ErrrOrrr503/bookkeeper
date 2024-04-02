@@ -6,7 +6,7 @@ from bookkeeper.models.category import Category
 from bookkeeper.models.budget import Budget
 from bookkeeper.models.expense import Expense
 
-from datetime import timedelta
+from datetime import datetime
 
 import pytest
 
@@ -16,7 +16,7 @@ def category():
 
 @pytest.fixture
 def budget():
-    return Budget(146, timedelta(seconds=1))
+    return Budget(146)
 
 @pytest.fixture
 def expense():

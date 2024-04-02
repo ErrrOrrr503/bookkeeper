@@ -44,6 +44,8 @@ def test_eq():
     c1 = Category(name='name', parent=1, pk=2)
     c2 = Category(name='name', parent=1, pk=2)
     assert c1 == c2
+    with pytest.raises(NotImplementedError):
+        c1 == 42
 
 
 def test_get_parent(repo):
@@ -88,6 +90,19 @@ def test_get_subcategories_complicated(repo: MemoryRepository[Category]):
     assert isgenerator(gen)
     # using set because order doesn't matter
     assert {c.name for c in gen} == {'1', '2', '3', '4'}
+
+def test_get_all_categories_sorted(repo: MemoryRepository[Category]):
+    root = Category('0')
+    root_pk = repo.add(root)
+    repo.add(Category('1', root_pk))
+    pk2 = repo.add(Category('2', root_pk))
+    repo.add(Category('3', pk2))
+    repo.add(Category('4', pk2))
+
+    gen = root.get_all_categories_sorted(repo)
+    assert isgenerator(gen)
+    # using set because order doesn't matter
+    assert {c.name for c in gen} == {'0', '1', '2', '3', '4'}
 
 
 def test_create_from_tree(repo):
