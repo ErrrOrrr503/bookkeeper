@@ -23,7 +23,7 @@ def test_create_realconfig():
     conf = Configurator()
     c = ConfigParser()
     c.read('bookkeeper/config/config.ini')
-    assert list(c) == list(conf._parser)
+    assert sorted(list(c)) == sorted(list(conf._parser))
 
 def test_get(tmp_path, def_configparser, def_config):
     confpath = tmp_path / 'config'

@@ -9,10 +9,11 @@ from dataclasses import dataclass
 class ViewError(Exception):
     """ Some exception with clear error string that view can handle. """
 
+
 class ViewWarning(Exception):
     """ Some exception with clear error string that view can handle. """
 
-# TODO: translation
+
 @dataclass
 class ExpenseEntry():
     """
@@ -25,6 +26,7 @@ class ExpenseEntry():
     cost: str = 'Cost'
     category: str = 'Category'
     comment: str = 'Comment'
+
 
 @dataclass
 class BudgetEntry():
@@ -39,12 +41,21 @@ class BudgetEntry():
     spent: str = "Spent"
     category: str = "Category"
 
+
 @dataclass
 class CategoryEntry():
+    """
+    Type that represents Categories tree item.
+
+    Default attributes represent columns/sections names.
+    All attributes are strings. View's job is not to format, but to draw.
+    """
     category: str = "Category name"
     parent: str = "Parent category"
 
+
 T = TypeVar('T', ExpenseEntry, BudgetEntry, CategoryEntry)
+
 
 class AbstractEntries(ABC, Generic[T]):
     """

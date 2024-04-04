@@ -10,6 +10,7 @@ from bookkeeper.repository.abstract_repository import AbstractRepository
 from bookkeeper.models.category import Category
 from bookkeeper.config import constants
 
+
 @dataclass(slots=True)
 class Budget:
     """
@@ -62,9 +63,9 @@ class Budget:
         return repo.get(self.category)
 
     def set_type(self, new_type: str) -> None:
-        if new_type in [ constants.BUDGET_DAILY,
-                         constants.BUDGET_WEEKLY,
-                         constants.BUDGET_MONTHLY ]:
+        if new_type in [constants.BUDGET_DAILY,
+                        constants.BUDGET_WEEKLY,
+                        constants.BUDGET_MONTHLY]:
             self.budget_type = new_type
             self.recalculate_period()
 

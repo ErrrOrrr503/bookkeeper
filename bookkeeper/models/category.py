@@ -78,7 +78,7 @@ class Category:
 
     @staticmethod
     def _get_children(graph: dict[int | None, list['Category']],
-                     root: int | None) -> Iterator['Category']:
+                      root: int | None) -> Iterator['Category']:
         """ dfs in graph from root """
         for subcat in graph[root]:
             yield subcat

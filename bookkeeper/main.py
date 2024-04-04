@@ -1,7 +1,6 @@
 """
 Bookkeeper logic, in fact presenter
 """
-from typing import Any, Callable, Generic
 from datetime import datetime, timedelta
 import re
 from locale import setlocale, LC_ALL
@@ -14,7 +13,7 @@ from bookkeeper.config.configurator import Configurator
 
 from bookkeeper.view.abstract_view import ExpenseEntry, CategoryEntry, BudgetEntry
 from bookkeeper.view.abstract_view import AbstractView
-from bookkeeper.view.abstract_view import ViewError, ViewWarning
+from bookkeeper.view.abstract_view import ViewError
 from bookkeeper.view.qt6_view import Qt6View
 
 from bookkeeper.repository.abstract_repository import AbstractRepository
@@ -22,14 +21,15 @@ from bookkeeper.repository.repository_factory import RepositoryFactory
 
 from bookkeeper.config import constants
 
+
 class EntriesConverter:
     """
     Converter between models and view entries.
     Should include only converting logic.
     """
     def __init__(self, expense_repo: AbstractRepository[Expense],
-                       category_repo: AbstractRepository[Category],
-                       budget_repo: AbstractRepository[Budget]):
+                 category_repo: AbstractRepository[Category],
+                 budget_repo: AbstractRepository[Budget]):
         self._exp_repo = expense_repo
         self._cat_repo = category_repo
         self._bud_repo = budget_repo
@@ -40,14 +40,14 @@ class EntriesConverter:
         return dt.replace(microsecond=0)
 
     def _cost_str_to_int(self, cost_str: str) -> int:
-        if re.fullmatch('(\d+)([,\.]\d\d?)?', cost_str) is None:
+        if re.fullmatch(r'(\d+)([,\.]\d\d?)?', cost_str) is None:
             raise ViewError(f'Wrong cost value: {cost_str}')
         s = cost_str.replace(',', '.')
         pos = s.find('.')
         multiplier = 100
-        if pos == len(s) - 2:
+        if pos > 0 and pos == len(s) - 2:
             multiplier = 10
-        if pos == len(s) - 3:
+        if pos > 0 and pos == len(s) - 3:
             multiplier = 1
         s = s.replace('.', '')
         return int(s) * multiplier  # no exception here possible due to strict re
@@ -55,12 +55,12 @@ class EntriesConverter:
     def _get_cat_pk_by_name(self, cat_name: str) -> int | None:
         if cat_name == constants.TOP_CATEGORY_NAME:
             return None
-        cats = self._cat_repo.get_all(where={ 'name': cat_name })
+        cats = self._cat_repo.get_all(where={'name': cat_name})
         if len(cats) == 0:
             raise ViewError(f'No category {cat_name} present.')
-        elif len(cats) > 1:
+        if len(cats) > 1:
             raise ViewError(f'Multiple categories {cat_name} present. '
-                             'Repo seems to be corrupted.')
+                            'Repo seems to be corrupted.')
         return cats[0].pk
 
     def expense_to_entry(self, expense: Expense) -> ExpenseEntry:
@@ -98,12 +98,13 @@ class EntriesConverter:
 
     def entry_to_expense(self, entry: ExpenseEntry) -> Expense:
         exp = Expense()
+        exp.added_date = datetime.now()
         exp.category = self._get_cat_pk_by_name(entry.category)
         exp.comment = entry.comment
         exp.cost = self._cost_str_to_int(entry.cost)
         try:
             exp.expense_date = datetime.strptime(entry.date, '%Y-%m-%d %H:%M:%S')
-        except ValueError as e:
+        except ValueError:
             raise ViewError(f'Wrong date: {entry.date} '
                             'needed \'YYYY-M(M)-D(D) h(h):m(m):s(s)\'')
         return exp
@@ -208,22 +209,22 @@ class BookKeeper():
     def _set_expenses(self) -> None:
         """ set expenses in view, may include representing logic, i.e. sorting """
         self._exp_viewed = self._exp_repo.get_all()
-        entries = [ self._entries_converter.expense_to_entry(e)
-                    for e in self._exp_viewed ]
+        entries = [self._entries_converter.expense_to_entry(e)
+                   for e in self._exp_viewed]
         self._view.expenses.set_contents(entries)
 
     def _set_budgets(self) -> None:
         """ set budgets in view, may include representing logic, i.e. sorting """
         self._bud_viewed = self._bud_repo.get_all()
-        entries = [ self._entries_converter.budget_to_entry(b, self._calculate_spent(b))
-                    for b in self._bud_viewed ]
+        entries = [self._entries_converter.budget_to_entry(b, self._calculate_spent(b))
+                   for b in self._bud_viewed]
         self._view.budgets.set_contents(entries)
 
     def _set_categories(self) -> None:
         """ set categories in view, may include representing logic, i.e. sorting """
         self._cat_viewed = list(Category.get_all_categories_sorted(self._cat_repo))
-        entries = [ self._entries_converter.category_to_entry(c)
-                    for c in self._cat_viewed ]
+        entries = [self._entries_converter.category_to_entry(c)
+                   for c in self._cat_viewed]
         self._view.categories.set_contents(entries)
 
     def _calculate_spent(self, budget: Budget) -> int:
@@ -236,8 +237,8 @@ class BookKeeper():
 
     def _cb_get_allowed_attrs(self, attr_str: str) -> list[str]:
         if attr_str == "category":
-            cats = [ cat.name for cat in
-                        Category.get_all_categories_sorted(self._cat_repo) ]
+            cats = [cat.name
+                    for cat in Category.get_all_categories_sorted(self._cat_repo)]
             cats.insert(0, constants.TOP_CATEGORY_NAME)
             return cats
         return []
@@ -264,7 +265,7 @@ class BookKeeper():
             self._exp_repo.update(new_exp)
             self._exp_viewed[position] = new_exp
             self._view.expenses.set_at_position(position, new_entry)
-        except:
+        except BaseException:
             # revert to old entry
             old_entry = self._entries_converter.expense_to_entry(exp)
             self._view.expenses.set_at_position(position, old_entry)
@@ -282,10 +283,11 @@ class BookKeeper():
             self._bud_repo.update(new_bud)
             self._bud_viewed[position] = new_bud
             self._view.budgets.set_at_position(position, new_entry)
-        except:
+        except BaseException:
             # revert to old entry
-            old_entry = self._entries_converter.budget_to_entry(bud,
-                            self._calculate_spent(bud))
+            old_entry = (
+                self._entries_converter.budget_to_entry(bud,
+                                                        self._calculate_spent(bud)))
             self._view.budgets.set_at_position(position, old_entry)
             raise
 
@@ -302,11 +304,11 @@ class BookKeeper():
             raise NotImplementedError('By far deletion of several categories '
                                       'at once is not supported.')
         if len(positions) == 0:
-            return None
+            return
         pos = positions[0]
         cat = self._cat_viewed[pos]
         parent = cat.parent
-        to_delete = [ subcat.pk for subcat in cat.get_subcategories(self._cat_repo) ]
+        to_delete = [subcat.pk for subcat in cat.get_subcategories(self._cat_repo)]
         to_delete.append(cat.pk)
         # delete category with subcategories
         for pk in to_delete:
@@ -316,7 +318,7 @@ class BookKeeper():
             if exp.category in to_delete:
                 exp.category = parent
                 self._exp_repo.update(exp)
-        #re-link budgets
+        # re-link budgets
         for bud in self._bud_repo.get_all():
             if bud.category in to_delete:
                 bud.category = parent
@@ -336,7 +338,7 @@ class BookKeeper():
             self._cat_repo.update(new_cat)
             self._cat_viewed[position] = new_cat
             self._view.categories.set_at_position(position, new_entry)
-        except:
+        except BaseException:
             # revert to old entry
             old_entry = self._entries_converter.category_to_entry(cat)
             self._view.categories.set_at_position(position, old_entry)
@@ -349,7 +351,7 @@ class BookKeeper():
         return self._entries_converter.category_to_entry(Category(name=''))
 
 
-##### BookKeeper start ####
+# BookKeeper start #
 
 
 if __name__ == '__main__':

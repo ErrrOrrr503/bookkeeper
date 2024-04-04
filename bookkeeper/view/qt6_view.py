@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QWidget, QTableWidget, QTableWidgetItem, QHeaderV
                                QComboBox, QMenu, QMessageBox, QGridLayout, QHBoxLayout,
                                QVBoxLayout, QLineEdit, QLabel, QPushButton, QTreeWidget,
                                QTreeWidgetItem, QApplication, QMainWindow, QSizePolicy)
-from PySide6.QtCore import QEvent, Qt, QPoint, QSize
+from PySide6.QtCore import Qt, QPoint, QSize
 from PySide6.QtGui import (QKeyEvent, QContextMenuEvent,
                            QPaintEvent, QShowEvent, QWheelEvent)
 
@@ -21,7 +21,9 @@ from bookkeeper.view.abstract_view import (T, AbstractEntries, ExpenseEntry,
                                            CategoryEntry, AbstractView)
 
 
-def call_callback(widget: QWidget, callback: Callable[..., Any] | None, *args: Any, **kwargs: Any) -> Tuple[Any, str | None]:
+def call_callback(widget: QWidget,
+                  callback: Callable[..., Any] | None,
+                  *args: Any, **kwargs: Any) -> Tuple[Any, str | None]:
     """ helper function to call callbacks and handle exceptions """
     if callback is None:
         return None, 'NoneCallback'
@@ -39,13 +41,14 @@ def call_callback(widget: QWidget, callback: Callable[..., Any] | None, *args: A
         title = 'Warning'
         msg = str(e)
         box = QMessageBox.warning
-    except Exception as e:
+    except Exception:
         title = 'Fatal'
         msg = traceback.format_exc()
         box = QMessageBox.critical
     if title is not None:
         box(widget, title, msg, QMessageBox.Ok)  # type: ignore[attr-defined]
     return ret, title
+
 
 def partial_none(func: Callable[..., Any] | None,
                  /, *args: Any, **kwargs: Any) -> Callable[..., Any] | None:
@@ -73,7 +76,8 @@ class SelfUpdatableCombo(QComboBox):
     _prev_contents: list[str] = []
     _receivers: list[Callable[[str], None]] = []
 
-    def __init__(self, callback: Callable[[], list[str]] | None, *args: Any, **kwargs: Any):
+    def __init__(self, callback: Callable[[], list[str]] | None,
+                 *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._receivers = []
         self.get_contents = callback
@@ -94,11 +98,11 @@ class SelfUpdatableCombo(QComboBox):
             for rec in self._receivers:
                 self.currentTextChanged.connect(rec)
 
-    def connect_text_changed(self, callback: Callable[[str], None]):
+    def connect_text_changed(self, callback: Callable[[str], None]) -> None:
         self.currentTextChanged.connect(callback)
         self._receivers.append(callback)
 
-    def disconnect_text_changed(self, callback: Callable[[str], None]):
+    def disconnect_text_changed(self, callback: Callable[[str], None]) -> None:
         self.currentTextChanged.disconnect(callback)
         self._receivers.remove(callback)
 
@@ -126,7 +130,7 @@ class EntriesTableWidgetMeta(type(AbstractEntries),  # type: ignore[misc]
 
 
 class EntriesTableWidget(QTableWidget, AbstractEntries[T],
-                          metaclass=EntriesTableWidgetMeta):
+                         metaclass=EntriesTableWidgetMeta):
     """
     Editable expenses table widget
     """
@@ -248,7 +252,7 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
         call_callback(self, self._entries_delete, [self.currentRow()])
 
 
-#### Expenses #####
+# Expenses #
 
 
 class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
@@ -270,7 +274,7 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
         cost_widget: QLineEdit
         category_widget: SelfUpdatableCombo
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any):
             super().__init__(*args, **kwargs)
             layout = QGridLayout()
 
@@ -324,7 +328,6 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
         def _want_add(self) -> None:
             call_callback(self, self.entry_add, self._entry)
 
-
     expenses_adder_widget: type[_ExpensesAdderWidget]
 
     def __init__(self, *args: Any, **kwargs: Any):
@@ -352,7 +355,7 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
         self.expenses_adder_widget.edit_categories = CallableWrapper(callback)
 
 
-#### Budgets #####
+# Budgets #
 
 
 class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
@@ -365,9 +368,10 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
         super().set_at_position(position, entry)
         self.cellChanged.disconnect(self.cell_changed)
         for j, attr_str in enumerate(self.annotations.keys()):
-            if attr_str not in [ 'category', 'cost_limit' ]:
+            if attr_str not in ['category', 'cost_limit']:
                 qitem = self.item(position, j)
-                qitem.setFlags(qitem.flags() & ~Qt.ItemIsEditable)  # type: ignore[attr-defined]
+                qitem.setFlags(qitem.flags()
+                               & ~Qt.ItemIsEditable)  # type: ignore[attr-defined]
         self.cellChanged.connect(self.cell_changed)
 
     def sizeHint(self) -> QSize:
@@ -380,17 +384,17 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
         return size
 
 
-
-#### Categories #####
+# Categories #
 
 
 # Mypy ignores are set, due to mypy is unable to determine dynamic
 # base classes. See https://github.com/python/mypy/issues/2477
 class EntriesWidgetMeta(type(AbstractEntries),  # type: ignore[misc]
-                           type(QWidget)):     # type: ignore[misc]
+                        type(QWidget)):     # type: ignore[misc]
     """
     Metaclass for correct inheritance of ExpensesTableWidget from AbstractExpenses.
     """
+
 
 class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
                        metaclass=EntriesWidgetMeta):
@@ -405,7 +409,7 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
         new_category_widget: QLineEdit
         parent_category_widget: SelfUpdatableCombo
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any):
             super().__init__(*args, **kwargs)
             layout = QVBoxLayout()
 
@@ -449,7 +453,6 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
 
         def _want_add(self) -> None:
             call_callback(self, self.entry_add, self.entry_to_add)
-
 
     annotations: dict[str, type]
 
@@ -507,8 +510,8 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
         self._position_to_item = {}
         if len(entries) == 0:
             return
-        parent_items = [ QTreeWidgetItem([entries[0].parent]) ]
-        parents = [ entries[0].parent ]
+        parent_items = [QTreeWidgetItem([entries[0].parent])]
+        parents = [entries[0].parent]
         i = 0
         while entries[i].parent == parents[-1]:
             item = QTreeWidgetItem([entries[i].category])
@@ -590,10 +593,10 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
     def _want_delete(self) -> None:
         cur_item = self.tree.currentItem()
         if cur_item is not None:
-            call_callback(self, self._entries_delete, [ self._item_to_position[cur_item] ])
+            call_callback(self, self._entries_delete, [self._item_to_position[cur_item]])
 
 
-#### Qt6 View ####
+# Qt6 View #
 
 
 class Qt6View(AbstractView):
