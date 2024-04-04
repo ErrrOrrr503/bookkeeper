@@ -268,6 +268,16 @@ class TestBudgets:
         widget.connect_get_attr_allowed(get_attr_allowed)
         widget.set_contents(budgets_list)
         qtbot.addWidget(widget)
+        widget.show()
+
+    def test_color(self, qtbot, budgets_list):
+        widget = BudgetTableWidget()
+        widget.connect_get_attr_allowed(get_attr_allowed)
+        widget.set_contents(budgets_list)
+        widget.color_entry(0, 127, 0, 0)
+        widget.color_entry(1, 127, 127, 0)
+        qtbot.addWidget(widget)
+        widget.show()
 
 
 class TestCategoriesWidget:

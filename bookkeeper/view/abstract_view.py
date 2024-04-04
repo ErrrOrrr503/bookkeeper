@@ -61,7 +61,7 @@ class AbstractEntries(ABC, Generic[T]):
     """
     Abstract expenses list viewer, i.e. table widget
     Methods that raise NotImplementedError are optional,
-    but can be used for optimization.
+    but can be used for optimization (perf or ux)
     """
     @abstractmethod
     def set_contents(self, entries: list[T]) -> None:
@@ -113,6 +113,13 @@ class AbstractEntries(ABC, Generic[T]):
         ExpenseEntry's attribute can take only specific values.
         This enables view to make optimizations, i.e. dropdowns
         """
+
+    def color_entry(self, position: int, red: int, green: int, blue: int) -> None:
+        """
+        Color the entry at position in RGB.
+        Optional method.
+        """
+        raise NotImplementedError
 
 
 class AbstractView(ABC):

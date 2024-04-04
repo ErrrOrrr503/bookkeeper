@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QWidget, QTableWidget, QTableWidgetItem, QHeaderV
                                QVBoxLayout, QLineEdit, QLabel, QPushButton, QTreeWidget,
                                QTreeWidgetItem, QApplication, QMainWindow, QSizePolicy)
 from PySide6.QtCore import Qt, QPoint, QSize
-from PySide6.QtGui import (QKeyEvent, QContextMenuEvent,
+from PySide6.QtGui import (QKeyEvent, QContextMenuEvent, QColor,
                            QPaintEvent, QShowEvent, QWheelEvent)
 
 from bookkeeper.config import constants
@@ -368,10 +368,15 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
         super().set_at_position(position, entry)
         self.cellChanged.disconnect(self.cell_changed)
         for j, attr_str in enumerate(self.annotations.keys()):
-            if attr_str not in ['category', 'cost_limit']:
-                qitem = self.item(position, j)
-                qitem.setFlags(qitem.flags()
-                               & ~Qt.ItemIsEditable)  # type: ignore[attr-defined]
+            # forbid to change anything except cost limit
+            if attr_str not in ['cost_limit']:
+                wid = self.cellWidget(position, j)
+                if isinstance(wid, SelfUpdatableCombo):
+                    wid.setEnabled(False)
+                else:
+                    qitem = self.item(position, j)
+                    qitem.setFlags(qitem.flags()
+                                   & ~Qt.ItemIsEditable)  # type: ignore[attr-defined]
         self.cellChanged.connect(self.cell_changed)
 
     def sizeHint(self) -> QSize:
@@ -382,6 +387,16 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
         if height < size.height():
             size.setHeight(height + 2)  # 2 is small addition to remove slider
         return size
+
+    def color_entry(self, position: int, red: int, green: int, blue: int) -> None:
+        for j in range(self.columnCount()):
+            wid = self.cellWidget(position, j)
+            if isinstance(wid, SelfUpdatableCombo):
+                wid.setStyleSheet('QComboBox '
+                                  f'{{ background: rgb({red}, {green}, {blue}) }}')
+            else:
+                qitem = self.item(position, j)
+                qitem.setBackground(QColor(red, green, blue))
 
 
 # Categories #
