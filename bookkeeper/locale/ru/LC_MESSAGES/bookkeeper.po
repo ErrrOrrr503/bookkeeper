@@ -124,4 +124,3 @@ msgstr "Расходы"
 #: bookkeeper/view/qt6_view.py:879
 msgid "Budgets"
 msgstr "Бюджеты"
-

@@ -175,7 +175,7 @@ class EntriesConverter:
         except ValueError:
             raise ViewError(
                 _('Wrong date: {date} '
-                'needed \'YYYY-M(M)-D(D) h(h):m(m):s(s)\'.').format(date=entry.date)
+                  'needed \'YYYY-M(M)-D(D) h(h):m(m):s(s)\'.').format(date=entry.date)
             )
         return exp
 
@@ -216,7 +216,7 @@ class EntriesConverter:
                 or len(entry.category) == 0):
             raise ViewError(
                 _('Category name must not be empty '
-                'or \'{top_name}\'.').format(top_name=constants.TOP_CATEGORY_NAME)
+                  'or \'{top_name}\'.').format(top_name=constants.TOP_CATEGORY_NAME)
             )
         cat.name = entry.category
         cat.parent = self._get_cat_pk_by_name(entry.parent)

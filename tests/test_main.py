@@ -27,6 +27,8 @@ from bookkeeper.main import EntriesConverter, BookKeeper
 
 from bookkeeper.utils import read_tree
 
+from bookkeeper.locale.gettext import _
+
 @pytest.fixture(scope='session')
 def sqlite_configurator(tmp_path_factory):
     conffile = tmp_path_factory.mktemp('tmp') / 'config.ini'
@@ -111,8 +113,8 @@ class TestEntriesConverter():
     def test_expense_to_entry(self, cat_repo, exp_repo, bud_repo):
         conv = EntriesConverter(exp_repo, cat_repo, bud_repo)
         e = Expense(100, None, datetime(1970, 1, 1), datetime(1970, 1, 1), 'comment', 0)
-        assert(conv.expense_to_entry(e)) == ExpenseEntry('1970-01-01 00:00:00', '1.0', '-', 'comment')
-        cat = Category()
+        assert(conv.expense_to_entry(e)) == ExpenseEntry('1970-01-01 00:00:00', '1.0', _('-'), 'comment')
+        cat = Category('Category')
         pk = cat_repo.add(cat)
         e.category = pk
         assert(conv.expense_to_entry(e)) == ExpenseEntry('1970-01-01 00:00:00', '1.0', 'Category', 'comment')
@@ -120,7 +122,7 @@ class TestEntriesConverter():
     def test_category_to_entry(self, cat_repo, exp_repo, bud_repo):
         conv = EntriesConverter(exp_repo, cat_repo, bud_repo)
         c = Category()
-        assert(conv.category_to_entry(c)) == CategoryEntry('Category', '-')
+        assert(conv.category_to_entry(c)) == CategoryEntry('Category', _('-'))
         ppk = cat_repo.add(Category('Top'))
         c = Category(parent=ppk)
         assert(conv.category_to_entry(c)) == CategoryEntry('Category', 'Top')
@@ -130,7 +132,7 @@ class TestEntriesConverter():
         conv = EntriesConverter(exp_repo, cat_repo, bud_repo)
         b = Budget(100, datetime(1970, 12, 30), datetime(1970, 12, 30))
         period = datetime(1970, 12, 30).strftime('%x') + '-' + datetime(1970, 12, 30).strftime('%x')
-        assert(conv.budget_to_entry(b, 100)) == BudgetEntry(period, '1.0', '1.0', '-')
+        assert(conv.budget_to_entry(b, 100)) == BudgetEntry(period, '1.0', '1.0', _('-'))
         pk = cat_repo.add(Category())
         b = Budget(100, datetime(1970, 12, 30), datetime(1970, 12, 30), constants.BUDGET_DAILY, pk)
         assert(conv.budget_to_entry(b, 100)) == BudgetEntry(constants.BUDGET_DAILY, '1.0', '1.0', 'Category')
@@ -138,29 +140,29 @@ class TestEntriesConverter():
     @freeze_time('2024-03-15')
     def test_entry_to_expense(self, cat_repo, exp_repo, bud_repo):
         conv = EntriesConverter(exp_repo, cat_repo, bud_repo)
-        e = ExpenseEntry('1970-01-01 00:00:00', '1.0', '-', 'comment')
+        e = ExpenseEntry('1970-01-01 00:00:00', '1.0', _('-'), 'comment')
         assert(conv.entry_to_expense(e)) == Expense(expense_date=datetime(1970, 1, 1),
                                                     added_date=datetime.now(),
                                                     cost=100, comment='comment')
-        e = ExpenseEntry('1970-1-1 00:00:00', '1.0', '-', 'comment')
+        e = ExpenseEntry('1970-1-1 00:00:00', '1.0', _('-'), 'comment')
         assert(conv.entry_to_expense(e)) == Expense(expense_date=datetime(1970, 1, 1),
                                                     added_date=datetime(2024, 3, 15),
                                                     cost=100, comment='comment')
-        e = ExpenseEntry('1970-1-1 00:00:00', '1,01', '-', 'comment')
+        e = ExpenseEntry('1970-1-1 00:00:00', '1,01', _('-'), 'comment')
         assert(conv.entry_to_expense(e)) == Expense(expense_date=datetime(1970, 1, 1),
                                                     added_date=datetime(2024, 3, 15),
                                                     cost=101, comment='comment')
-        e = ExpenseEntry('1970-1-1 00:00:00', '1', '-', 'comment')
+        e = ExpenseEntry('1970-1-1 00:00:00', '1', _('-'), 'comment')
         assert(conv.entry_to_expense(e)) == Expense(expense_date=datetime(1970, 1, 1),
                                                     added_date=datetime(2024, 3, 15),
                                                     cost=100, comment='comment')
-        e = ExpenseEntry('1970-1-1', '1.0', '-', 'comment')
+        e = ExpenseEntry('1970-1-1', '1.0', _('-'), 'comment')
         with pytest.raises(ViewError):
             conv.entry_to_expense(e)
-        e = ExpenseEntry('1970-1-1 00:00:00', '1.001', '-', 'comment')
+        e = ExpenseEntry('1970-1-1 00:00:00', '1.001', _('-'), 'comment')
         with pytest.raises(ViewError):
             conv.entry_to_expense(e)
-        e = ExpenseEntry('1970-1-1 00:00:00', '-1.0', '-', 'comment')
+        e = ExpenseEntry('1970-1-1 00:00:00', '-1.0', _('-'), 'comment')
         with pytest.raises(ViewError):
             conv.entry_to_expense(e)
         e = ExpenseEntry('1970-1-1 00:00:00', '1.0', 'Absent', 'comment')
@@ -184,7 +186,6 @@ class TestEntriesConverter():
         setlocale(LC_ALL, '')
         b = BudgetEntry(period=constants.BUDGET_DAILY, category=constants.TOP_CATEGORY_NAME,
                         cost_limit='0')
-        #period = datetime.now().strftime('%x') + '-' + datetime.now().strftime('%x')
         assert(conv.entry_to_budget(b)) == Budget(budget_type=constants.BUDGET_DAILY)
 
     def test_entry_to_category(self, cat_repo, exp_repo, bud_repo):
@@ -193,7 +194,7 @@ class TestEntriesConverter():
             conv.entry_to_category(CategoryEntry(category=''))
         with pytest.raises(ViewError):
             conv.entry_to_category(CategoryEntry(category=constants.TOP_CATEGORY_NAME))
-        c = CategoryEntry('Category', '-')
+        c = CategoryEntry('Category', _('-'))
         assert(conv.entry_to_category(c)) == Category()
         p = Category('Parent')
         cat_repo.add(p)
@@ -229,22 +230,22 @@ class TestBookKeeper:
         custom_configurator = request.getfixturevalue(custom_configurator)
         monkeypatch.setattr(Configurator, 'config_files', custom_configurator.config_files)
         bookkeeper = BookKeeper()
-        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '1.0', '-'))
+        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '1.0', _('-'), 'comment'))
         # by far adding expense with custom date is unsupported
-        assert Expense(100, None, comment="Comment", added_date=datetime.now(), expense_date=datetime.now()) in bookkeeper._exp_viewed
-        assert Expense(100, None, comment="Comment", added_date=datetime.now(), expense_date=datetime.now()) in bookkeeper._exp_repo.get_all()
+        assert Expense(100, None, comment="comment", added_date=datetime.now(), expense_date=datetime.now()) in bookkeeper._exp_viewed
+        assert Expense(100, None, comment="comment", added_date=datetime.now(), expense_date=datetime.now()) in bookkeeper._exp_repo.get_all()
         bookkeeper._cb_delete_expense([0])
         assert len(bookkeeper._exp_viewed) == 0
         assert len(bookkeeper._exp_repo.get_all()) == 0
-        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '1.0', '-'))
-        bookkeeper._cb_edited_expense(0, ExpenseEntry('1970-1-1 00:00:00', '10.0', '-'))
-        assert Expense(1000, None, comment="Comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_viewed
-        assert Expense(1000, None, comment="Comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_repo.get_all()
+        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '1.0', _('-'), 'comment'))
+        bookkeeper._cb_edited_expense(0, ExpenseEntry('1970-1-1 00:00:00', '10.0', _('-'), 'comment'))
+        assert Expense(1000, None, comment="comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_viewed
+        assert Expense(1000, None, comment="comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_repo.get_all()
         with pytest.raises(ViewError):
-            bookkeeper._cb_edited_expense(0, ExpenseEntry('1970-1-1 wrong', '-10.0', '-'))
+            bookkeeper._cb_edited_expense(0, ExpenseEntry('1970-1-1 wrong', '-10.0', _('-'), 'comment'))
         # no changes should be made
-        assert Expense(1000, None, comment="Comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_viewed
-        assert Expense(1000, None, comment="Comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_repo.get_all()
+        assert Expense(1000, None, comment="comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_viewed
+        assert Expense(1000, None, comment="comment", added_date=datetime.now(), expense_date=datetime(1970, 1, 1)) in bookkeeper._exp_repo.get_all()
         bookkeeper._view.app.shutdown()
 
     @pytest.mark.parametrize('custom_configurator', ['sqlite_configurator', 'memory_configurator'])
@@ -252,12 +253,12 @@ class TestBookKeeper:
         custom_configurator = request.getfixturevalue(custom_configurator)
         monkeypatch.setattr(Configurator, 'config_files', custom_configurator.config_files)
         bookkeeper = BookKeeper()
-        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '110', '-'))
-        bookkeeper._cb_edited_budget(0, BudgetEntry(constants.BUDGET_DAILY, '100', '0', '-'))
+        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '110', _('-')))
+        bookkeeper._cb_edited_budget(0, BudgetEntry(constants.BUDGET_DAILY, '100', '0', _('-')))
         assert Budget(10000, budget_type=constants.BUDGET_DAILY) in bookkeeper._bud_viewed
         assert Budget(10000, budget_type=constants.BUDGET_DAILY) in bookkeeper._bud_repo.get_all()
         with pytest.raises(ViewError):
-            bookkeeper._cb_edited_budget(0, BudgetEntry(constants.BUDGET_DAILY, '-100', '0', '-'))
+            bookkeeper._cb_edited_budget(0, BudgetEntry(constants.BUDGET_DAILY, '-100', '0', _('-')))
         # no changes should be made
         assert Budget(10000, budget_type=constants.BUDGET_DAILY) in bookkeeper._bud_viewed
         assert Budget(10000, budget_type=constants.BUDGET_DAILY) in bookkeeper._bud_repo.get_all()
@@ -268,13 +269,13 @@ class TestBookKeeper:
         custom_configurator = request.getfixturevalue(custom_configurator)
         monkeypatch.setattr(Configurator, 'config_files', custom_configurator.config_files)
         bookkeeper = BookKeeper()
-        bookkeeper._cb_add_category(CategoryEntry('Category', '-'))
-        assert Category('Category') in bookkeeper._cat_viewed
-        assert Category('Category') in bookkeeper._cat_repo.get_all()
+        bookkeeper._cb_add_category(CategoryEntry(_('Category'), _('-')))
+        assert Category(_('Category')) in bookkeeper._cat_viewed
+        assert Category(_('Category')) in bookkeeper._cat_repo.get_all()
         # add with dup name
         with pytest.raises(ViewError):
-            bookkeeper._cb_add_category(CategoryEntry('Category', 'Category'))
-        bookkeeper._cb_add_category(CategoryEntry('Child', 'Category'))
+            bookkeeper._cb_add_category(CategoryEntry(_('Category'), _('Category')))
+        bookkeeper._cb_add_category(CategoryEntry('Child', _('Category')))
         with pytest.raises(NotImplementedError):
             bookkeeper._cb_delete_category([0, 1])
         bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '1.0', 'Child'))
@@ -284,13 +285,13 @@ class TestBookKeeper:
         assert len(bookkeeper._cat_repo.get_all()) == 0
         assert bookkeeper._exp_repo.get_all()[0].category == None
         assert bookkeeper._bud_repo.get_all()[0].category == None
-        bookkeeper._cb_add_category(CategoryEntry('Category', '-'))
-        bookkeeper._cb_add_category(CategoryEntry('Child', 'Category'))
+        bookkeeper._cb_add_category(CategoryEntry(_('Category'), _('-')))
+        bookkeeper._cb_add_category(CategoryEntry('Child', _('Category')))
         with pytest.raises(ViewError):
-            bookkeeper._cb_edited_category(1, CategoryEntry('Category', 'Category'))
+            bookkeeper._cb_edited_category(1, CategoryEntry(_('Category'), _('Category')))
         assert Category('Child', bookkeeper._cat_viewed[0].pk) in bookkeeper._cat_viewed
         assert Category('Child', bookkeeper._cat_viewed[0].pk) in bookkeeper._cat_repo.get_all()
-        bookkeeper._cb_edited_category(1, CategoryEntry('NewChild', 'Category'))
+        bookkeeper._cb_edited_category(1, CategoryEntry('NewChild', _('Category')))
         assert Category('NewChild', bookkeeper._cat_viewed[0].pk) in bookkeeper._cat_viewed
         assert Category('NewChild', bookkeeper._cat_viewed[0].pk) in bookkeeper._cat_repo.get_all()
         bookkeeper._view.app.shutdown()
