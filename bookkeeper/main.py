@@ -21,6 +21,8 @@ from bookkeeper.repository.repository_factory import RepositoryFactory
 
 from bookkeeper.config import constants
 
+from bookkeeper.locale.gettext import _
+
 
 class EntriesConverter:
     """
@@ -54,7 +56,7 @@ class EntriesConverter:
 
     def _cost_str_to_int(self, cost_str: str) -> int:
         if re.fullmatch(r'(\d+)([,\.]\d\d?)?', cost_str) is None:
-            raise ViewError(f'Wrong cost value: {cost_str}')
+            raise ViewError(_('Wrong cost value: {cost_str}').format(cost_str=cost_str))
         s = cost_str.replace(',', '.')
         pos = s.find('.')
         multiplier = 100
@@ -70,10 +72,12 @@ class EntriesConverter:
             return None
         cats = self._cat_repo.get_all(where={'name': cat_name})
         if len(cats) == 0:
-            raise ViewError(f'No category {cat_name} present.')
+            raise ViewError(
+                _('No category {cat_name} present').format(cat_name=cat_name)
+            )
         if len(cats) > 1:
-            raise ViewError(f'Multiple categories {cat_name} present. '
-                            'Repo seems to be corrupted.')
+            raise ViewError(_('Multiple categories {cat_name} present. '
+                            'Repo seems to be corrupted.').format(cat_name=cat_name))
         return cats[0].pk
 
     def expense_to_entry(self, expense: Expense) -> ExpenseEntry:
@@ -169,8 +173,10 @@ class EntriesConverter:
         try:
             exp.expense_date = datetime.strptime(entry.date, '%Y-%m-%d %H:%M:%S')
         except ValueError:
-            raise ViewError(f'Wrong date: {entry.date} '
-                            'needed \'YYYY-M(M)-D(D) h(h):m(m):s(s)\'')
+            raise ViewError(
+                _('Wrong date: {date} '
+                'needed \'YYYY-M(M)-D(D) h(h):m(m):s(s)\'.').format(date=entry.date)
+            )
         return exp
 
     def entry_to_budget(self, entry: BudgetEntry) -> Budget:
@@ -208,8 +214,10 @@ class EntriesConverter:
         cat = Category()
         if (entry.category == constants.TOP_CATEGORY_NAME
                 or len(entry.category) == 0):
-            raise ViewError('Category name must not be empty '
-                            f'or \'{constants.TOP_CATEGORY_NAME}\'')
+            raise ViewError(
+                _('Category name must not be empty '
+                'or \'{top_name}\'.').format(top_name=constants.TOP_CATEGORY_NAME)
+            )
         cat.name = entry.category
         cat.parent = self._get_cat_pk_by_name(entry.parent)
         return cat
@@ -438,7 +446,9 @@ class BookKeeper():
         cat = self._entries_converter.entry_to_category(entry)
         for c in self._cat_repo.get_all():
             if c.name == cat.name:
-                raise ViewError('Category name must be unique.' f'({cat.name})')
+                raise ViewError(
+                    _('Category name ({name}) must be unique.').format(name=cat.name)
+                )
         self._cat_repo.add(cat)
         self._set_categories()
 
@@ -476,7 +486,9 @@ class BookKeeper():
             new_cat = self._entries_converter.entry_to_category(new_entry)
             for c in self._cat_repo.get_all():
                 if c.name == new_cat.name and c.name != cat.name:
-                    raise ViewError('Category name must be unique.' f'({cat.name})')
+                    raise ViewError(
+                        _('Category name ({name}) must be unique.').format(name=cat.name)
+                    )
             new_cat.pk = cat.pk
             self._cat_repo.update(new_cat)
             self._cat_viewed[position] = new_cat

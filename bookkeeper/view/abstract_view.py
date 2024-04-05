@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from typing import Callable, Generic, TypeVar
 from dataclasses import dataclass
 
+from bookkeeper.locale.gettext import _
+
 
 class ViewError(Exception):
     """ Some exception with clear error string that view can handle. """
@@ -33,10 +35,10 @@ class ExpenseEntry():
     comment : str
         User comment about the expense.
     """
-    date: str = 'Date'
-    cost: str = 'Cost'
-    category: str = 'Category'
-    comment: str = 'Comment'
+    date: str = _('Date')
+    cost: str = _('Cost')
+    category: str = _('Category')
+    comment: str = _('Comment')
 
 
 @dataclass
@@ -58,10 +60,10 @@ class BudgetEntry():
     category : str
         Category, for which budget is restricted.
     """
-    period: str = "Period"
-    cost_limit: str = "Limit"
-    spent: str = "Spent"
-    category: str = "Category"
+    period: str = _('Period')
+    cost_limit: str = _('Limit')
+    spent: str = _('Spent')
+    category: str = _('Category')
 
 
 @dataclass
@@ -79,8 +81,8 @@ class CategoryEntry():
     parent : str
         Name of the parent category.
     """
-    category: str = "Category name"
-    parent: str = "Parent category"
+    category: str = _('Category name')
+    parent: str = _('Parent category')
 
 
 T = TypeVar('T', ExpenseEntry, BudgetEntry, CategoryEntry)

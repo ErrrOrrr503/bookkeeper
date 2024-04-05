@@ -7,9 +7,12 @@ But not ok to rely on equal spelling of repeated values.
 
 The difference from config is that it's not planned that user may alter this.
 """
+from bookkeeper.locale.gettext import _
 
-TOP_CATEGORY_NAME = '-'
+TOP_CATEGORY_NAME = _('-')
 
+# a better way can be enum, but enum has issues with types
+# i.e. StrEnum element is str, ok, but, str in StrEnum wold not work.
 BUDGET_DAILY = 'Daily'
 BUDGET_WEEKLY = 'Weekly'
 BUDGET_MONTHLY = 'Monthly'

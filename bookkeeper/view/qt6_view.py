@@ -29,6 +29,8 @@ from bookkeeper.view.abstract_view import (T, AbstractEntries, ExpenseEntry,
                                            BudgetEntry, ViewError, ViewWarning,
                                            CategoryEntry, AbstractView)
 
+from bookkeeper.locale.gettext import _
+
 
 def call_callback(widget: QWidget,
                   callback: Callable[..., Any] | None,
@@ -60,26 +62,30 @@ def call_callback(widget: QWidget,
     if callback is None:
         return None, 'NoneCallback'
     title: str | None = None
+    status: str | None = None
     ret = None
     msg = ''
     box: Callable[..., Any]
     try:
         ret = callback(*args, **kwargs)
     except ViewError as e:
-        title = 'Error'
+        status = 'Error'
+        title = _('Error')
         msg = str(e)
         box = QMessageBox.critical
     except ViewWarning as e:
-        title = 'Warning'
+        status = 'Warning'
+        title = _('Warning')
         msg = str(e)
         box = QMessageBox.warning
     except Exception:
-        title = 'Fatal'
+        status = 'Fatal'
+        title = _('Fatal')
         msg = traceback.format_exc()
         box = QMessageBox.critical
     if title is not None:
         box(widget, title, msg, QMessageBox.Ok)  # type: ignore[attr-defined]
-    return ret, title
+    return ret, status
 
 
 def partial_none(func: Callable[..., Any] | None,
@@ -317,7 +323,7 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
     def connect_delete(self,
                        callback: Callable[[list[int]], None]) -> None:
         self._entries_delete = callback
-        del_act = self._context_menu.addAction("Delete")
+        del_act = self._context_menu.addAction(_('Delete'))
         del_act.triggered.connect(self._want_delete)
 
     def connect_get_attr_allowed(self,
@@ -331,7 +337,7 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
     def connect_add(self,
                     callback: Callable[[T], None]) -> None:
         self._entry_add = callback
-        add_act = self._context_menu.addAction("Add")
+        add_act = self._context_menu.addAction(_('Add'))
         add_act.triggered.connect(self.want_add)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
@@ -447,19 +453,19 @@ class ExpensesTableWidget(EntriesTableWidget[ExpenseEntry],
 
             self.cost_widget = QLineEdit(self)
             self.cost_widget.textChanged.connect(self._cost_changed)
-            layout.addWidget(QLabel('Cost', self), 0, 0)
+            layout.addWidget(QLabel(_('Cost'), self), 0, 0)
             layout.addWidget(self.cost_widget, 0, 1)
 
             self.category_widget = SelfUpdatableCombo(None, self)
             self.category_widget.connect_text_changed(self._category_changed)
-            layout.addWidget(QLabel('Category', self), 1, 0)
+            layout.addWidget(QLabel(_('Category'), self), 1, 0)
             layout.addWidget(self.category_widget, 1, 1)
 
-            self.add_button_widget = QPushButton('Add', self)
+            self.add_button_widget = QPushButton(_('Add'), self)
             self.add_button_widget.clicked.connect(self._want_add)
             layout.addWidget(self.add_button_widget, 2, 1)
 
-            self.edit_cat_button_widget = QPushButton('Edit', self)
+            self.edit_cat_button_widget = QPushButton(_('Edit'), self)
             layout.addWidget(self.edit_cat_button_widget, 1, 2)
 
             self.setLayout(layout)
@@ -658,7 +664,7 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
             layout.addWidget(QLabel(CategoryEntry.parent, self))
             layout.addWidget(self.parent_category_widget)
 
-            self.add_button_widget = QPushButton('Add', self)
+            self.add_button_widget = QPushButton(_('Add'), self)
             self.add_button_widget.clicked.connect(self._want_add)
             layout.addWidget(self.add_button_widget)
 
@@ -719,7 +725,7 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
 
         self.tree = QTreeWidget(self)
         self.tree.setColumnCount(1)
-        self.tree.setHeaderLabels(["Categories"])
+        self.tree.setHeaderLabels([_('Categories')])
         self.tree.itemChanged.connect(self._item_changed)
         self.tree.itemActivated.connect(self._item_activated)
 
@@ -785,7 +791,7 @@ class CategoriesWidget(QWidget, AbstractEntries[CategoryEntry],
     def connect_delete(self,
                        callback: Callable[[list[int]], None]) -> None:
         self._entries_delete = callback
-        del_act = self._tree_context_menu.addAction("Delete")
+        del_act = self._tree_context_menu.addAction(_('Delete'))
         del_act.triggered.connect(self._want_delete)
 
     def connect_add(self,
@@ -866,11 +872,11 @@ class Qt6View(AbstractView):
 
         self._categories_widget = CategoriesWidget()
 
-        self.central_layout.addWidget(QLabel("Expenses", self.central_widget))
+        self.central_layout.addWidget(QLabel(_('Expenses'), self.central_widget))
         self._expenses_widget = ExpensesTableWidget(self.central_widget)
         self.central_layout.addWidget(self._expenses_widget)
 
-        self.central_layout.addWidget(QLabel("Budgets", self.central_widget))
+        self.central_layout.addWidget(QLabel(_('Budgets'), self.central_widget))
         self._budgets_widget = BudgetTableWidget(self.central_widget)
         self._budgets_widget.setSizePolicy(QSizePolicy.Policy.Expanding,
                                            QSizePolicy.Policy.Preferred)
