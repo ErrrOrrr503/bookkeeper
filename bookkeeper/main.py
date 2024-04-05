@@ -142,6 +142,8 @@ class BookKeeper():
     _bud_viewed: list[Budget]
     _cat_viewed: list[Category]
 
+    _bud_warn_threshold: float
+
     def __init__(self) -> None:
         # set locale from env variable for proper datetime representation
         setlocale(LC_ALL, '')
@@ -183,6 +185,10 @@ class BookKeeper():
 
     def _init_configuration(self) -> None:
         confer = Configurator()
+        self._bud_warn_threshold = float(
+            confer[type(self).__name__]['budget_warning_threshold'])
+        if self._bud_warn_threshold <= 0 or self._bud_warn_threshold >= 1:
+            raise ValueError('budget_warning_threshold should be between 0 and 1')
         desired_view = confer[type(self).__name__]['desired_view']
         if desired_view == 'Qt6View':
             self._view = Qt6View()
@@ -216,9 +222,15 @@ class BookKeeper():
     def _set_budgets(self) -> None:
         """ set budgets in view, may include representing logic, i.e. sorting """
         self._bud_viewed = self._bud_repo.get_all()
-        entries = [self._entries_converter.budget_to_entry(b, self._calculate_spent(b))
-                   for b in self._bud_viewed]
+        entries: list[BudgetEntry] = []
+        colors: list[tuple[int, int, int]] = []
+        for pos, b in enumerate(self._bud_viewed):
+            spent = self._calculate_spent(b)
+            entries.append(self._entries_converter.budget_to_entry(b, spent))
+            colors.append(self._determine_budget_color(b, spent))
         self._view.budgets.set_contents(entries)
+        for pos, color in enumerate(colors):
+            self._view.budgets.color_entry(pos, *color)
 
     def _set_categories(self) -> None:
         """ set categories in view, may include representing logic, i.e. sorting """
@@ -234,6 +246,18 @@ class BookKeeper():
                     and exp.expense_date < budget.end):
                 spent += exp.cost
         return spent
+
+    def _determine_budget_color(self,
+                                budget: Budget,
+                                spent: int) -> tuple[int, int, int]:
+        color = constants.RGB_BUDGET_DEFAULT
+        if (budget.cost_limit > 0
+                and spent > budget.cost_limit * self._bud_warn_threshold):
+            color = constants.RGB_BUDGET_WARNING
+        if (budget.cost_limit > 0
+                and spent > budget.cost_limit):
+            color = constants.RGB_BUDGET_OVERRUN
+        return color
 
     def _cb_get_allowed_attrs(self, attr_str: str) -> list[str]:
         if attr_str == "category":
@@ -283,6 +307,8 @@ class BookKeeper():
             self._bud_repo.update(new_bud)
             self._bud_viewed[position] = new_bud
             self._view.budgets.set_at_position(position, new_entry)
+            color = self._determine_budget_color(new_bud, self._calculate_spent(new_bud))
+            self._view.budgets.color_entry(position, *color)
         except BaseException:
             # revert to old entry
             old_entry = (

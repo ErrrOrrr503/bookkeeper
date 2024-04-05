@@ -66,13 +66,16 @@ class AbstractEntries(ABC, Generic[T]):
     @abstractmethod
     def set_contents(self, entries: list[T]) -> None:
         """
-        Set the contents of the table/list/other representation
+        Set the contents of the table/list/other representation.
+        For categories, list must be topologically sorted as they have tree structure.
         """
 
     @abstractmethod
     def set_at_position(self, position: int, entry: T) -> None:
         """
-        Set an entry at existing position in the table/list/other representation
+        Set an entry at existing position in the table/list/other representation.
+        Position becomes existing after set_contents() call.
+        Position matches one in the list, passed to set_contents().
         """
 
     @abstractmethod
@@ -109,15 +112,17 @@ class AbstractEntries(ABC, Generic[T]):
     def connect_get_attr_allowed(self,
                                  callback: Callable[[str], list[str]]) -> None:
         """
-        Register callback, thar AbstractExpenses can call to query, if
+        Register callback, that AbstractExpenses can call to query, if
         ExpenseEntry's attribute can take only specific values.
-        This enables view to make optimizations, i.e. dropdowns
+        This enables view to make optimizations, i.e. dropdowns.
+        callback(attrubute_name) -> [specific_values]
         """
 
     def color_entry(self, position: int, red: int, green: int, blue: int) -> None:
         """
         Color the entry at position in RGB.
         Optional method.
+        Use (r, g, b) == constants.RGB_RESET_COLOR to revert color.
         """
         raise NotImplementedError
 

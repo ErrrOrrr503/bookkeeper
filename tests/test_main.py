@@ -35,6 +35,7 @@ def sqlite_configurator(tmp_path_factory):
         cf.write(f"""
             [BookKeeper]
             desired_view = Qt6View
+            budget_warning_threshold = 0.9
 
             [SqliteRepository]
             db_file = {dbfile}
@@ -51,6 +52,7 @@ def memory_configurator(tmp_path_factory):
         cf.write(f"""
             [BookKeeper]
             desired_view = Qt6View
+            budget_warning_threshold = 0.9
 
             [RepositoryFactory]
             desired_repo = MemoryRepository
@@ -64,6 +66,21 @@ def bad_view_configurator(tmp_path_factory):
         cf.write(f"""
             [BookKeeper]
             desired_view = AbsentView
+            budget_warning_threshold = 0.9
+
+            [RepositoryFactory]
+            desired_repo = MemoryRepository
+        """)
+    return Configurator([(conffile, 'abs')])
+
+@pytest.fixture(scope='session')
+def bad_thresh_configurator(tmp_path_factory):
+    conffile = tmp_path_factory.mktemp('tmp') / 'config.ini'
+    with open(conffile, 'w') as cf:
+        cf.write(f"""
+            [BookKeeper]
+            desired_view = Qt6View
+            budget_warning_threshold = 1.1
 
             [RepositoryFactory]
             desired_repo = MemoryRepository
@@ -199,6 +216,12 @@ class TestBookKeeper:
         with pytest.raises(ValueError):
             bookkeeper = BookKeeper()
 
+    def test_bad_thresh_config(self, bad_thresh_configurator, monkeypatch):
+        custom_configurator = bad_thresh_configurator
+        monkeypatch.setattr(Configurator, 'config_files', custom_configurator.config_files)
+        with pytest.raises(ValueError):
+            bookkeeper = BookKeeper()
+
     # freeze_time breaks typing detection in sqlite repo.abs
     @freeze_time('2024-03-15')
     @pytest.mark.parametrize('custom_configurator', ['memory_configurator'])
@@ -229,6 +252,7 @@ class TestBookKeeper:
         custom_configurator = request.getfixturevalue(custom_configurator)
         monkeypatch.setattr(Configurator, 'config_files', custom_configurator.config_files)
         bookkeeper = BookKeeper()
+        bookkeeper._cb_add_expense(ExpenseEntry('1970-1-1 00:00:00', '110', '-'))
         bookkeeper._cb_edited_budget(0, BudgetEntry(constants.BUDGET_DAILY, '100', '0', '-'))
         assert Budget(10000, budget_type=constants.BUDGET_DAILY) in bookkeeper._bud_viewed
         assert Budget(10000, budget_type=constants.BUDGET_DAILY) in bookkeeper._bud_repo.get_all()

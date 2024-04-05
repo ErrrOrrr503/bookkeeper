@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QWidget, QTableWidget, QTableWidgetItem, QHeaderV
                                QVBoxLayout, QLineEdit, QLabel, QPushButton, QTreeWidget,
                                QTreeWidgetItem, QApplication, QMainWindow, QSizePolicy)
 from PySide6.QtCore import Qt, QPoint, QSize
-from PySide6.QtGui import (QKeyEvent, QContextMenuEvent, QColor,
+from PySide6.QtGui import (QKeyEvent, QContextMenuEvent, QColor, QBrush,
                            QPaintEvent, QShowEvent, QWheelEvent)
 
 from bookkeeper.config import constants
@@ -174,17 +174,22 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
             if err is not None:
                 possible_vals = []
             if len(possible_vals) > 0:
-                prev_widget = self.cellWidget(position, j)
-                if isinstance(prev_widget, SelfUpdatableCombo):
-                    prev_widget.disconnect_text_changed(self._qbox_changed)
-                get_allowed = partial_none(self._get_entry_attr_allowed, attr_str)
-                qcombo = SelfUpdatableCombo(get_allowed)
+                qcombo = self.cellWidget(position, j)
+                if isinstance(qcombo, SelfUpdatableCombo):
+                    qcombo.disconnect_text_changed(self._qbox_changed)
+                else:
+                    get_allowed = partial_none(self._get_entry_attr_allowed, attr_str)
+                    qcombo = SelfUpdatableCombo(get_allowed)
+                    self.setCellWidget(position, j, qcombo)
                 qcombo.set_content(item)
-                self.setCellWidget(position, j, qcombo)
                 qcombo.connect_text_changed(self._qbox_changed)
                 continue
-            qitem = QTableWidgetItem(item)
-            self.setItem(position, j, qitem)
+            qitem = self.item(position, j)
+            if qitem is not None:
+                qitem.setText(item)
+            else:
+                qitem = QTableWidgetItem(item)
+                self.setItem(position, j, qitem)
         self.cellChanged.connect(self.cell_changed)
 
     def set_contents(self, entries: list[T]) -> None:
@@ -370,9 +375,9 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
         for j, attr_str in enumerate(self.annotations.keys()):
             # forbid to change anything except cost limit
             if attr_str not in ['cost_limit']:
-                wid = self.cellWidget(position, j)
-                if isinstance(wid, SelfUpdatableCombo):
-                    wid.setEnabled(False)
+                qcombo = self.cellWidget(position, j)
+                if isinstance(qcombo, SelfUpdatableCombo):
+                    qcombo.setEnabled(False)
                 else:
                     qitem = self.item(position, j)
                     qitem.setFlags(qitem.flags()
@@ -389,14 +394,17 @@ class BudgetTableWidget(EntriesTableWidget[BudgetEntry],
         return size
 
     def color_entry(self, position: int, red: int, green: int, blue: int) -> None:
+        combo_style_sheet = f'QComboBox {{ background: rgb({red}, {green}, {blue}) }}'
+        item_brush = QBrush(QColor(red, green, blue))
+        if (red, green, blue) == constants.RGB_RESET_COLOR:
+            combo_style_sheet = ''
+            item_brush = QBrush()
         for j in range(self.columnCount()):
             wid = self.cellWidget(position, j)
             if isinstance(wid, SelfUpdatableCombo):
-                wid.setStyleSheet('QComboBox '
-                                  f'{{ background: rgb({red}, {green}, {blue}) }}')
+                wid.setStyleSheet(combo_style_sheet)
             else:
-                qitem = self.item(position, j)
-                qitem.setBackground(QColor(red, green, blue))
+                self.item(position, j).setBackground(item_brush)
 
 
 # Categories #
