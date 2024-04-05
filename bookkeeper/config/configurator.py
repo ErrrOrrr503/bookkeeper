@@ -51,5 +51,6 @@ class Configurator():
         return self._parser[item_name]
 
     def write(self) -> None:
+        """ Write the _writefilename config file. """
         with open(self._writefilename, 'w') as writefile:
             self._parser.write(writefile)

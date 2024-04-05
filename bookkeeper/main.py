@@ -1,5 +1,5 @@
 """
-Bookkeeper logic, in fact presenter
+Bookkeeper logic, in fact presenter.
 """
 from datetime import datetime, timedelta
 import re
@@ -25,8 +25,21 @@ from bookkeeper.config import constants
 class EntriesConverter:
     """
     Converter between models and view entries.
-    Should include only converting logic.
+    Should include only converting and checking logic.
+
+    Attributes
+    ----------
+    _exp_repo : AbstractRepository[Expense]
+        Repository that stores expenses.
+    _cat_repo : AbstractRepository[Category]
+        Repository that stores categories.
+    _bud_repo : AbstractRepository[Budget]
+        Repository that stores budgets.
     """
+    _exp_repo: AbstractRepository[Expense]
+    _cat_repo: AbstractRepository[Category]
+    _bud_repo: AbstractRepository[Budget]
+
     def __init__(self, expense_repo: AbstractRepository[Expense],
                  category_repo: AbstractRepository[Category],
                  budget_repo: AbstractRepository[Budget]):
@@ -64,6 +77,18 @@ class EntriesConverter:
         return cats[0].pk
 
     def expense_to_entry(self, expense: Expense) -> ExpenseEntry:
+        """
+        Converts Expense to ExpenseEntry.
+
+        Parameters
+        ----------
+        expense : Expense
+            Expense to be converted to ExpenseEntry.
+
+        Returns
+        -------
+        ExpenseEntry, converted from expense.
+        """
         e = ExpenseEntry()
         cat = None
         if expense.category is not None:
@@ -76,6 +101,18 @@ class EntriesConverter:
         return e
 
     def category_to_entry(self, category: Category) -> CategoryEntry:
+        """
+        Converts Category to CategoryEntry.
+
+        Parameters
+        ----------
+        category : Category
+            Category to be converted to CategoryEntry.
+
+        Returns
+        -------
+        CategoryEntry, converted from category.
+        """
         c = CategoryEntry()
         c.category = category.name
         parent = category.get_parent(self._cat_repo)
@@ -83,6 +120,21 @@ class EntriesConverter:
         return c
 
     def budget_to_entry(self, budget: Budget, spent: int) -> BudgetEntry:
+        """
+        Converts Budget to BudgetEntry.
+
+        Parameters
+        ----------
+        budget : Budget
+            Budget to be converted to BudgetEntry.
+        spent : int
+            Amount spent during the budget period, 100x.
+            i.e. in cents fot USD, in pennies for RUB.
+
+        Returns
+        -------
+        BudgetEntry, converted from budget.
+        """
         b = BudgetEntry()
         category = budget.get_category(self._cat_repo)
         b.category = constants.TOP_CATEGORY_NAME
@@ -97,6 +149,18 @@ class EntriesConverter:
         return b
 
     def entry_to_expense(self, entry: ExpenseEntry) -> Expense:
+        """
+        Converts ExpenseEntry to Expense.
+
+        Parameters
+        ----------
+        entry : ExpenseEntry
+            ExpenseEntry to be converted to Expense.
+
+        Returns
+        -------
+        Expense, converted from the entry.
+        """
         exp = Expense()
         exp.added_date = datetime.now()
         exp.category = self._get_cat_pk_by_name(entry.category)
@@ -110,6 +174,18 @@ class EntriesConverter:
         return exp
 
     def entry_to_budget(self, entry: BudgetEntry) -> Budget:
+        """
+        Converts BudgetEntry to Budget.
+
+        Parameters
+        ----------
+        entry : BudgetEntry
+            BudgetEntry to be converted to Budget.
+
+        Returns
+        -------
+        Budget, converted from the entry.
+        """
         bud = Budget()
         bud.category = self._get_cat_pk_by_name(entry.category)
         bud.set_type(entry.period)
@@ -117,6 +193,18 @@ class EntriesConverter:
         return bud
 
     def entry_to_category(self, entry: CategoryEntry) -> Category:
+        """
+        Converts CategoryEntry to Category.
+
+        Parameters
+        ----------
+        entry : CategoryEntry
+            CategoryEntry to be converted to Category.
+
+        Returns
+        -------
+        Category, converted from the entry.
+        """
         cat = Category()
         if (entry.category == constants.TOP_CATEGORY_NAME
                 or len(entry.category) == 0):
@@ -129,7 +217,33 @@ class EntriesConverter:
 
 class BookKeeper():
     """
-    Presenter, that contains logic
+    Presenter, that contains logic and connects View with model and repository.
+
+    Attributes
+    ----------
+    _exp_repo : AbstractRepository[Expense]
+        Repository that stores expenses.
+    _cat_repo : AbstractRepository[Category]
+        Repository that stores categories.
+    _bud_repo : AbstractRepository[Budget]
+        Repository that stores budgets.
+    _view : AbstractView
+        Implementation of AbstractView.
+    _entries_converter : EntriesConverter
+        EntriesConverter instance.
+    _exp_viewed : list[Expense]
+        List of Expenses that are currently viewed.
+        Indices in this list corresponds to positions in the _view.
+    _bud_viewed : list[Budget]
+        List of Budgets that are currently viewed.
+        Indices in this list corresponds to positions in the _view.
+    _cat_viewed : list[Category]
+        List of Categories that are currently viewed.
+        Indices in this list corresponds to positions in the _view.
+    _bud_warn_threshold : float
+        The threshold  in fractions (0-1) from which budget is marked as warning.
+        I.t. if _bud_warn_threshold is 0.9, cost_limit is 100, then from 90
+        the budget entry will be marked as warning (yellow currently).
     """
     _cat_repo: AbstractRepository[Category]
     _bud_repo: AbstractRepository[Budget]
@@ -180,7 +294,7 @@ class BookKeeper():
         self._set_categories()
 
     def start(self) -> None:
-        """ the only public entity in presenter """
+        """ Start the application. The only public entity in the presenter. """
         self._view.start()
 
     def _init_configuration(self) -> None:
@@ -288,6 +402,7 @@ class BookKeeper():
             new_exp.pk = exp.pk
             self._exp_repo.update(new_exp)
             self._exp_viewed[position] = new_exp
+            new_entry = self._entries_converter.expense_to_entry(new_exp)
             self._view.expenses.set_at_position(position, new_entry)
         except BaseException:
             # revert to old entry
@@ -306,8 +421,10 @@ class BookKeeper():
             new_bud.pk = bud.pk
             self._bud_repo.update(new_bud)
             self._bud_viewed[position] = new_bud
+            spent = self._calculate_spent(new_bud)
+            new_entry = self._entries_converter.budget_to_entry(new_bud, spent)
             self._view.budgets.set_at_position(position, new_entry)
-            color = self._determine_budget_color(new_bud, self._calculate_spent(new_bud))
+            color = self._determine_budget_color(new_bud, spent)
             self._view.budgets.color_entry(position, *color)
         except BaseException:
             # revert to old entry
@@ -363,6 +480,7 @@ class BookKeeper():
             new_cat.pk = cat.pk
             self._cat_repo.update(new_cat)
             self._cat_viewed[position] = new_cat
+            new_entry = self._entries_converter.category_to_entry(new_cat)
             self._view.categories.set_at_position(position, new_entry)
         except BaseException:
             # revert to old entry

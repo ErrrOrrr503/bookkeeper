@@ -1,11 +1,11 @@
 """
 File, containing constants.
 
-It may be ok to hardcore a unique (translatable) str in view.
+It may be ok to hardcore a unique str in view.
 (view can contain a lot of strings)
 But not ok to rely on equal spelling of repeated values.
 
-The difference from config is that it's not planned that user will alter this.
+The difference from config is that it's not planned that user may alter this.
 """
 
 TOP_CATEGORY_NAME = '-'

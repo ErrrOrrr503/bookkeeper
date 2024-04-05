@@ -58,11 +58,30 @@ class Budget:
                 and self.category == other.category)
 
     def get_category(self, repo: AbstractRepository[Category]) -> Category | None:
+        """
+        Get Category, corresponding to category pk.
+
+        Parameters
+        ----------
+        repo : AbstractRepository[Category]
+            Repo where Categories are stored.
+        Returns
+        --------
+            Category object, corresponding to category field.
+        """
         if self.category is None:
             return None
         return repo.get(self.category)
 
     def set_type(self, new_type: str) -> None:
+        """
+        Make Budget specific type.
+
+        Parameters
+        ----------
+        new_type : str
+            Type-describing str from constants.BUDGET_...
+        """
         if new_type in [constants.BUDGET_DAILY,
                         constants.BUDGET_WEEKLY,
                         constants.BUDGET_MONTHLY]:
@@ -70,6 +89,11 @@ class Budget:
             self.recalculate_period()
 
     def recalculate_period(self) -> None:
+        """
+        Recalculate period for special type budgets.
+        I.e. DAILY corresponds to today,
+             MONTHLY - to current month.
+        """
         if self.budget_type == '':
             return
         dt_now = datetime.now()

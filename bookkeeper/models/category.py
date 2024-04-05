@@ -97,7 +97,7 @@ class Category:
             Repository from which object will be taken.
 
         Yields
-        -------
+        ------
         class Category instances, which are subcategories
         of different level lower than this.
         """
@@ -111,6 +111,20 @@ class Category:
     def get_all_categories_sorted(
             cls,
             repo: AbstractRepository['Category']) -> Iterator['Category']:
+        """
+        Get subcategories for 'root' (which pk is None).
+        That means all categories with all their subcategories.
+
+        Parameters
+        ----------
+        repo : AbstractRepository['Category']
+            Repository from which objects will be taken.
+
+        Yields
+        ------
+        all Categories in topologically sorted order:
+        Parent, Child1, GrandChild, Child2 ...
+        """
         subcats = defaultdict(list)
         for cat in repo.get_all():
             subcats[cat.parent].append(cat)
