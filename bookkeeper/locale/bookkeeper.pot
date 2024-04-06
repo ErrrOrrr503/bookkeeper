@@ -1,0 +1,121 @@
+# Translations template for PROJECT.
+# Copyright (C) 2024 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2024-04-05 23:11+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.14.0\n"
+
+#: bookkeeper/main.py:59
+msgid "Wrong cost value: {cost_str}"
+msgstr ""
+
+#: bookkeeper/main.py:76
+msgid "No category {cat_name} present"
+msgstr ""
+
+#: bookkeeper/main.py:79
+msgid "Multiple categories {cat_name} present. Repo seems to be corrupted."
+msgstr ""
+
+#: bookkeeper/main.py:177
+msgid "Wrong date: {date} needed 'YYYY-M(M)-D(D) h(h):m(m):s(s)'."
+msgstr ""
+
+#: bookkeeper/main.py:218
+msgid "Category name must not be empty or '{top_name}'."
+msgstr ""
+
+#: bookkeeper/main.py:450 bookkeeper/main.py:490
+msgid "Category name ({name}) must be unique."
+msgstr ""
+
+#: bookkeeper/config/constants.py:12
+msgid "-"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:38
+msgid "Date"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:39 bookkeeper/view/qt6_view.py:456
+msgid "Cost"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:40 bookkeeper/view/abstract_view.py:66
+#: bookkeeper/view/qt6_view.py:461
+msgid "Category"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:41
+msgid "Comment"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:63
+msgid "Period"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:64
+msgid "Limit"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:65
+msgid "Spent"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:84
+msgid "Category name"
+msgstr ""
+
+#: bookkeeper/view/abstract_view.py:85
+msgid "Parent category"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:73
+msgid "Error"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:78
+msgid "Warning"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:83
+msgid "Fatal"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:326 bookkeeper/view/qt6_view.py:794
+msgid "Delete"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:340 bookkeeper/view/qt6_view.py:464
+#: bookkeeper/view/qt6_view.py:667
+msgid "Add"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:468
+msgid "Edit"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:728
+msgid "Categories"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:875
+msgid "Expenses"
+msgstr ""
+
+#: bookkeeper/view/qt6_view.py:879
+msgid "Budgets"
+msgstr ""
+

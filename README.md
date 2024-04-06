@@ -182,7 +182,7 @@ $ poetry run pybabel extract bookkeeper/ -o bookkeeper/locale/bookkeeper.pot
 
 Проинициализировать новый файл перевода (для ru локализации):
 ```console
-poetry run pybabel init -l ru -i bookkeeper/locale/bookkeeper.pot -d bookkeeper/locale/ -D bookkeeper
+$ poetry run pybabel init -l ru -i bookkeeper/locale/bookkeeper.pot -d bookkeeper/locale/ -D bookkeeper
 ```
 
 Или обновить существующий:
@@ -194,5 +194,5 @@ $ poetry run pybabel update -l ru -i bookkeeper/locale/bookkeeper.pot -d bookkee
 
 Наконец, скомпилировать перевод:
 ```console
-poetry run pybabel compile -d bookkeeper/locale/ -D bookkeeper
+$ poetry run pybabel compile -d bookkeeper/locale/ -D bookkeeper
 ```
