@@ -128,7 +128,7 @@ $ poetry run python run_checks.py
 
 Текущее состояние проверок:
 
-* Тесты: Покрытие: 96% Min, 99% Avg. [HTML отчет](test_coverage.html/index.html).
+* Тесты: Покрытие: 96% Min, 99% Avg. [HTML отчет](https://htmlpreview.github.io/?https://github.com/ErrrOrrr503/bookkeeper/test_coverage.html/index.html).
 * Mypy: OK
 * Pylint: 9.68
 * flake8: Ok
