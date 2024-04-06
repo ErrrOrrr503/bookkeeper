@@ -879,7 +879,7 @@ class Qt6View(AbstractView):
         self.central_layout.addWidget(QLabel(_('Budgets'), self.central_widget))
         self._budgets_widget = BudgetTableWidget(self.central_widget)
         self._budgets_widget.setSizePolicy(QSizePolicy.Policy.Expanding,
-                                           QSizePolicy.Policy.Preferred)
+                                           QSizePolicy.Policy.Minimum)
         adj_to_cont = QAbstractScrollArea.AdjustToContents  # type: ignore[attr-defined]
         self._budgets_widget.setSizeAdjustPolicy(adj_to_cont)
         self.central_layout.addWidget(self._budgets_widget)
@@ -890,6 +890,7 @@ class Qt6View(AbstractView):
 
         self.central_widget.setLayout(self.central_layout)
         self.window.setCentralWidget(self.central_widget)
+        self.window.resize(500, 400)
 
     def _create_qapp(self) -> None:
         """ for monkeypatching in tests """
