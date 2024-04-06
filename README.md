@@ -46,7 +46,7 @@ $ poetry install --only main
 
 4. Запуск приложения.
 ```
-$ poetry run python poetry run python bookkeeper/main.py
+$ poetry run python bookkeeper/main.py
 ```
 
 ## Использование
