@@ -300,6 +300,7 @@ class EntriesTableWidget(QTableWidget, AbstractEntries[T],
                     get_allowed = partial_none(self._get_entry_attr_allowed, attr_str)
                     qcombo = SelfUpdatableCombo(get_allowed)
                     self.setCellWidget(position, j, qcombo)
+                qcombo.update_contents()
                 qcombo.set_content(item)
                 qcombo.connect_text_changed(self._qbox_changed)
                 continue
